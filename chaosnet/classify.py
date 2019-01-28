@@ -93,9 +93,9 @@ def myvgg11_bn(pretrained=False, **kwargs):
     """
     if pretrained:
         kwargs['init_weights'] = False
-    model = VGG(make_layers(cfg['A'], batch_norm=True), **kwargs)
-    if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['vgg11_bn']))
+    model = MyVGG(make_layers(cfg['A'], batch_norm=True), **kwargs)
+    # if pretrained:
+    #     model.load_state_dict(model_zoo.load_url(model_urls['vgg11_bn']))
     return model
 
 
@@ -144,7 +144,7 @@ valid_transform = transforms.Compose([
     #normalize
     ])
 
-in_memory = True
+in_memory = False
 training_set = TinyImageSet(train_path, 'train', transform=training_transform, in_memory=in_memory)
 valid_set = TinyImageSet(valid_path, 'val', transform=valid_transform, in_memory=in_memory)
 
