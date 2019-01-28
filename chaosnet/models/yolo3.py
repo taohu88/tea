@@ -52,6 +52,7 @@ class Darknet(nn.Module):
         self.losses["precision"] /= 3
         return sum(output) if is_training else torch.cat(output, 1)
 
+    # [TODO] refactor this out of this piece of code
     def load_weights(self, weights_path):
         """Parses and loads the weights stored in 'weights_path'"""
 
@@ -107,6 +108,7 @@ class Darknet(nn.Module):
         @:param cutoff  - save layers between 0 and cutoff (cutoff = -1 -> all are saved)
     """
 
+    # [TODO] refactor this out of this piece of code
     def save_weights(self, path, cutoff=-1):
 
         fp = open(path, "wb")

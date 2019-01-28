@@ -62,9 +62,63 @@ def make_conv_layer(module_def, input_sz, layer_num=None):
     return module, filters
 
 
+def make_maxpool_layer(module_def, input_sz=None, layer_num=None):
+    kernel_size = int(module_def["size"])
+    stride = int(module_def["stride"])
+    if kernel_size == 2 and stride == 1:
+        # I don't understand this bull shit of padding
+        raise Exception(f"Meeting strange kernel size {module_def}")
+        padding = (0, 1, 0, 1)
+    else:
+        padding = (0, 0, 0, 0)
+    module = PaddedMaxPool2d(
+        kernel_size=int(module_def["size"]),
+        stride=int(module_def["stride"]),
+        padding=padding
+    )
+    return module, None
+
+
+def make_upsample_layer(module_def, input_sz=None, layer_num=None):
+    module = nn.Upsample(scale_factor=int(module_def["stride"]), mode="nearest")
+    return module, None
+
+
+def make_route_layer(module_def, input_sz, layer_num=None):
+    layers = [int(x) for x in module_def["layers"].split(",")]
+    filters = sum([input_sz[layer_i] for layer_i in layers])
+    module = ConcatLayer(layers)
+    return module, filters
+
+
+def make_sum_layer(module_def, input_sz, layer_num=None):
+    froms = [-1, int(module_def["from"])]
+    filters = input_sz[int(module_def["from"])]
+    module = SumLayer(froms)
+    return module, filters
+
+
+def make_yolo3_layer(module_def, input_sz, layer_num, **hyperparams):
+    anchor_idxs = [int(x) for x in module_def["mask"].split(",")]
+    # Extract anchors
+    anchors = [int(x) for x in module_def["anchors"].split(",")]
+    anchors = [(anchors[i], anchors[i + 1]) for i in range(0, len(anchors), 2)]
+    anchors = [anchors[i] for i in anchor_idxs]
+    num_classes = int(module_def["classes"])
+    img_height = int(hyperparams["height"])
+    # Define detection layer
+    module = YOLO3Layer(anchors, num_classes, img_height)
+    return module, None
+
+
 _BUILDERS_ = {
     "convolutional": make_conv_layer,
     "connected": make_fc_layer,
+    "maxpool": make_maxpool_layer,
+    "upsample": make_upsample_layer,
+    "route": make_route_layer,
+    "shortcut": make_sum_layer,
+    "yolo": make_yolo3_layer,
 }
 
 def create_modules(module_defs):
@@ -78,42 +132,26 @@ def create_modules(module_defs):
         if module_def["type"] == "convolutional":
             creat_fun = _BUILDERS_[module_def["type"]]
             module, filters = creat_fun(module_def, output_filters[-1], i)
+
         elif module_def["type"] == "maxpool":
-            kernel_size = int(module_def["size"])
-            stride = int(module_def["stride"])
-            if kernel_size == 2 and stride == 1:
-                padding = (0, 1, 0, 1)
-            else:
-                padding = (0, 0, 0, 0)
-            module = PaddedMaxPool2d(
-                kernel_size=int(module_def["size"]),
-                stride=int(module_def["stride"]),
-                padding=padding
-            )
+            creat_fun = _BUILDERS_[module_def["type"]]
+            module, _ = creat_fun(module_def, output_filters[-1], i)
+
         elif module_def["type"] == "upsample":
-            module = nn.Upsample(scale_factor=int(module_def["stride"]), mode="nearest")
+            creat_fun = _BUILDERS_[module_def["type"]]
+            module, _ = creat_fun(module_def, output_filters[-1], i)
 
         elif module_def["type"] == "route":
-            layers = [int(x) for x in module_def["layers"].split(",")]
-            filters = sum([output_filters[layer_i] for layer_i in layers])
-            module = ConcatLayer(layers)
+            creat_fun = _BUILDERS_[module_def["type"]]
+            module, filters = creat_fun(module_def, output_filters, i)
 
         elif module_def["type"] == "shortcut":
-            froms = [-1, int(module_def["from"])]
-            filters = output_filters[int(module_def["from"])]
-            module = SumLayer(froms)
+            creat_fun = _BUILDERS_[module_def["type"]]
+            module, _ = creat_fun(module_def, output_filters, i)
 
         elif module_def["type"] == "yolo":
-            anchor_idxs = [int(x) for x in module_def["mask"].split(",")]
-            # Extract anchors
-            anchors = [int(x) for x in module_def["anchors"].split(",")]
-            anchors = [(anchors[i], anchors[i + 1]) for i in range(0, len(anchors), 2)]
-            anchors = [anchors[i] for i in anchor_idxs]
-            num_classes = int(module_def["classes"])
-            img_height = int(hyperparams["height"])
-            # Define detection layer
-            yolo_layer = YOLO3Layer(anchors, num_classes, img_height)
-            module = yolo_layer
+            creat_fun = _BUILDERS_[module_def["type"]]
+            module, _ = creat_fun(module_def, output_filters[-1], i, **hyperparams)
 
         # Register module list and number of output filters
         module_list.append(module)
