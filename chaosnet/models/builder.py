@@ -9,6 +9,64 @@ import numpy as np
 from modules.darkmodules import *
 
 
+def make_activation(act_name, module_def):
+    if act_name == "relu":
+        act = nn.ReLU(True)
+    # Darknet by default use 0.1
+    elif act_name == "leaky":
+        leaky_slope = 0.1
+        if "leaky_slope" in module_def:
+            leaky_slope = float(module_def["leaky_slope"])
+        act = nn.LeakyReLU(leaky_slope, inplace=True)
+    elif act_name == "linear":
+        act = Identity()
+    else:
+        raise Exception(f"Unknown {activation} in {module_def}")
+    return act
+
+
+def make_dropout_layer(module_def, input_sz=None, layer_num=None):
+    prob = float(0.5) if "probability" not in module_def else float(module_def["probability"])
+    return nn.Dropout(prob), None
+
+
+def make_fc_layer(module_def, input_sz, layer_num=None):
+    out_sz = int(module_def["output"])
+    act = make_activation(module_def["activation"], module_def)
+
+    module = nn.Sequential(
+        nn.Linear(input_sz, out_sz),
+        act)
+    return module, out_sz
+
+
+def make_conv_layer(module_def, input_sz, layer_num=None):
+    bn = int(module_def["batch_normalize"])
+    filters = int(module_def["filters"])
+    kernel_size = int(module_def["size"])
+    stride = int(module_def["stride"])
+    pad = (kernel_size - 1) // 2 if int(module_def["pad"]) else 0
+    act = make_activation(module_def["activation"], module_def)
+
+    if bn:
+        module = nn.Sequential(
+            nn.Conv2d(input_sz, filters, kernel_size, stride, pad, bias=False),
+            nn.BatchNorm2d(filters, momentum=0.01),
+            act
+        )
+    else:
+        module = nn.Sequential(
+            nn.Conv2d(input_sz, filters, kernel_size, stride, pad, bias=True),
+            act
+        )
+    return module, filters
+
+
+_BUILDERS_ = {
+    "convolutional": make_conv_layer,
+    "connected": make_fc_layer,
+}
+
 def create_modules(module_defs):
     """
     Constructs module list of layer blocks from module configuration in module_defs
@@ -18,24 +76,8 @@ def create_modules(module_defs):
     module_list = nn.ModuleList()
     for i, module_def in enumerate(module_defs):
         if module_def["type"] == "convolutional":
-            bn = int(module_def["batch_normalize"])
-            filters = int(module_def["filters"])
-            kernel_size = int(module_def["size"])
-            pad = (kernel_size - 1) // 2 if int(module_def["pad"]) else 0
-            if module_def["activation"] == "relu":
-                relu = lambda: nn.ReLU(inplace = True)
-            else:
-                relu = lambda: nn.LeakyReLU(0.1, inplace = True)
-            module = Conv2dBatchReLU(
-                    in_channels=output_filters[-1],
-                    out_channels=filters,
-                    kernel_size=kernel_size,
-                    stride=int(module_def["stride"]),
-                    padding=pad,
-                    relu=relu,
-                    batch_normalize=bn,
-                    momentum=0.01
-                )
+            creat_fun = _BUILDERS_[module_def["type"]]
+            module, filters = creat_fun(module_def, output_filters[-1], i)
         elif module_def["type"] == "maxpool":
             kernel_size = int(module_def["size"])
             stride = int(module_def["stride"])
@@ -48,7 +90,6 @@ def create_modules(module_defs):
                 stride=int(module_def["stride"]),
                 padding=padding
             )
-
         elif module_def["type"] == "upsample":
             module = nn.Upsample(scale_factor=int(module_def["stride"]), mode="nearest")
 

@@ -9,7 +9,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-__all__ = ['Conv2dBatchReLU', 'GlobalAvgPool2d', 'SumLayer', 'ConcatLayer',
+__all__ = ['Conv2dBatchReLU', 'GlobalAvgPool2d', 'Identity', 'SumLayer', 'ConcatLayer',
            'PaddedMaxPool2d', 'Reorg', 'YOLO3Layer']
 log = logging.getLogger(__name__)
 
@@ -69,6 +69,16 @@ class Conv2dBatchReLU(nn.Module):
 
     def forward(self, x):
         x = self.layers(x)
+        return x
+
+
+class Identity(nn.Module):
+    """ This is used for linear activation
+    """
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x):
         return x
 
 
