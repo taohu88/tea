@@ -22,22 +22,20 @@ def create_modules(module_defs):
             filters = int(module_def["filters"])
             kernel_size = int(module_def["size"])
             pad = (kernel_size - 1) // 2 if int(module_def["pad"]) else 0
-            if bn:
-                module = Conv2dBatchReLU(
-                        in_channels=output_filters[-1],
-                        out_channels=filters,
-                        kernel_size=kernel_size,
-                        stride=int(module_def["stride"]),
-                        padding=pad
-                    )
+            if module_def["activation"] == "relu":
+                relu = lambda: nn.ReLU(inplace = True)
             else:
-                module = nn.Conv2d(
-                        in_channels=output_filters[-1],
-                        out_channels=filters,
-                        kernel_size=kernel_size,
-                        stride=int(module_def["stride"]),
-                        padding=pad
-                    )
+                relu = lambda: nn.LeakyReLU(0.1, inplace = True)
+            module = Conv2dBatchReLU(
+                    in_channels=output_filters[-1],
+                    out_channels=filters,
+                    kernel_size=kernel_size,
+                    stride=int(module_def["stride"]),
+                    padding=pad,
+                    relu=relu,
+                    batch_normalize=bn,
+                    momentum=0.01
+                )
         elif module_def["type"] == "maxpool":
             kernel_size = int(module_def["size"])
             stride = int(module_def["stride"])

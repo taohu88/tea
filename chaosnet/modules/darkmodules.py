@@ -36,7 +36,7 @@ class Conv2dBatchReLU(nn.Module):
         ... )   # doctest: +SKIP
     """
     def __init__(self, in_channels, out_channels, kernel_size, stride, padding,
-                 momentum=0.01, relu=lambda: nn.LeakyReLU(0.1, inplace = True)):
+                 relu=lambda: nn.LeakyReLU(0.1, inplace = True), batch_normalize=1, momentum=0.01):
         super().__init__()
 
         # Parameters
@@ -45,18 +45,27 @@ class Conv2dBatchReLU(nn.Module):
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
-        self.momentum = momentum
+        self.batch_normalize = batch_normalize
 
         # Layer
-        self.layers = nn.Sequential(
-            nn.Conv2d(self.in_channels, self.out_channels, self.kernel_size, self.stride, self.padding, bias=False),
-            nn.BatchNorm2d(self.out_channels, momentum=self.momentum),
-            relu()
-        )
+        if batch_normalize:
+            self.layers = nn.Sequential(
+                nn.Conv2d(self.in_channels, self.out_channels, self.kernel_size, self.stride, self.padding, bias=False),
+                nn.BatchNorm2d(self.out_channels, momentum=momentum),
+                relu()
+            )
+        else:
+            self.layers = nn.Sequential(
+                nn.Conv2d(self.in_channels, self.out_channels, self.kernel_size, self.stride, self.padding),
+                relu()
+            )
+
 
     def __repr__(self):
-        s = '{name}({in_channels}, {out_channels}, kernel_size={kernel_size}, stride={stride}, padding={padding}, {relu})'
-        return s.format(name=self.__class__.__name__, relu=self.layers[2], **self.__dict__)
+        s = '{name}({in_channels}, {out_channels}, kernel_size={kernel_size}, stride={stride}, padding={padding}, batch_normalize={batch_normalize} relu={relu})'
+        return s.format(name=self.__class__.__name__, 
+                        relu=self.layers[2 if self.batch_normalize else 1], 
+                        **self.__dict__)
 
     def forward(self, x):
         x = self.layers(x)

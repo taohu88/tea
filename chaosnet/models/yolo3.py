@@ -69,8 +69,8 @@ class Darknet(nn.Module):
         ptr = 0
         for i, (module_def, module) in enumerate(zip(self.module_defs, self.module_list)):
             if module_def["type"] == "convolutional":
+                conv_layer = module.layers[0]                    
                 if module_def["batch_normalize"]:
-                    conv_layer = module.layers[0]                    
                     # Load BN bias, weights, running mean and running variance
                     bn_layer = module.layers[1]
                     num_b = bn_layer.bias.numel()  # Number of biases
@@ -92,7 +92,6 @@ class Darknet(nn.Module):
                     ptr += num_b
                 else:
                     # Load conv. bias
-                    conv_layer = module
                     num_b = conv_layer.bias.numel()
                     conv_b = torch.from_numpy(weights[ptr : ptr + num_b]).view_as(conv_layer.bias)
                     conv_layer.bias.data.copy_(conv_b)
@@ -118,8 +117,8 @@ class Darknet(nn.Module):
         for i, (module_def, module) in enumerate(zip(self.module_defs[:cutoff], self.module_list[:cutoff])):
             if module_def["type"] == "convolutional":
                 # If batch norm, load bn first
+                conv_layer = module.layers[0]                    
                 if module_def["batch_normalize"]:
-                    conv_layer = module.layers[0]                    
                     # Load BN bias, weights, running mean and running variance
                     bn_layer = module.layers[1]
 
@@ -131,7 +130,6 @@ class Darknet(nn.Module):
                 # Load conv bias
                 else:
                     # Load conv. bias
-                    conv_layer = module
                     conv_layer.bias.data.cpu().numpy().tofile(fp)
                 # Load conv weights
                 conv_layer.weight.data.cpu().numpy().tofile(fp)
