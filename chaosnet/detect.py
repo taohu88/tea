@@ -3,11 +3,9 @@ from __future__ import division
 from models.yolo3 import Darknet
 from utils.utils import load_classes, non_max_suppression
 
-# from utils.utils import *
 from utils.datasets import *
 
 import os
-import sys
 import time
 import datetime
 import argparse
