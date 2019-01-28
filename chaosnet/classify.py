@@ -25,17 +25,17 @@ from data.tiny_image_set import TinyImageSet
 
 class MyVGG(nn.Module):
 
-    def __init__(self, features, num_classes=1000, init_weights=True):
+    def __init__(self, features, num_classes=200, init_weights=True):
         super(MyVGG, self).__init__()
         self.features = features
         self.classifier = nn.Sequential(
-            nn.Linear(512 * 7 * 7, 4096),
+            nn.Linear(256 * 7 * 7, 2048),
             nn.ReLU(True),
             nn.Dropout(),
-            nn.Linear(4096, 4096),
+            nn.Linear(2048, 2048),
             nn.ReLU(True),
             nn.Dropout(),
-            nn.Linear(4096, num_classes),
+            nn.Linear(2048, num_classes),
         )
         if init_weights:
             self._initialize_weights()
@@ -78,7 +78,7 @@ def make_layers(cfg, batch_norm=False):
 
 
 cfg = {
-    'A': [64, 64, 'M', 128, 128, 256, 256, 'M', 512, 512, 'M'],
+    'A': [32, 32, 'M', 64, 64, 128, 128, 'M', 256, 256, 'M'],
     'B': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
     'D': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
     'E': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
@@ -100,7 +100,7 @@ def myvgg11_bn(pretrained=False, **kwargs):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--batch_size", type=int, default=160, help="size of each image batch")
+parser.add_argument("--batch_size", type=int, default=256, help="size of each image batch")
 parser.add_argument("--model_config_path", type=str, default="cfg/vgg-16.cfg", help="path to model config file")
 parser.add_argument("--data_config_path", type=str, default="cfg/tinyimage.data", help="path to data config file")
 parser.add_argument("--workers", type=int, default=4, help="number of cpu threads to use during batch generation")
@@ -189,7 +189,7 @@ try:
         num_instances = len(valid_set)
         
         with torch.no_grad():
-            resnet.eval()
+            vgg.eval()
             for idx, (data, target) in enumerate(validloader):
                 data, target = data.to(device), target.to(device)
                 output = vgg(data)
@@ -200,16 +200,12 @@ try:
 
         valid_acc = num_hits / num_instances * 100
         print(f' Validation acc: {valid_acc}%')
-        sw.add_scalar('Validation Accuracy(%)', valid_acc, epoch + 1)
             
         epoch_loss /= float(len(trainloader))
 #         print("Time used in one epoch: {:.1f}".format(time.time() - start))
         
         # save model
-        torch.save(resnet.state_dict(), 'models/weight.pth')
-        
-        # record loss
-        sw.add_scalar('Running Loss', epoch_loss, epoch + 1)
+        torch.save(vgg.state_dict(), 'output/weight.pth')
         
         
 except KeyboardInterrupt:
