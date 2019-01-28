@@ -100,7 +100,7 @@ def myvgg11_bn(pretrained=False, **kwargs):
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--batch_size", type=int, default=256, help="size of each image batch")
+parser.add_argument("--batch_size", type=int, default=374, help="size of each image batch")
 parser.add_argument("--model_config_path", type=str, default="cfg/vgg-16.cfg", help="path to model config file")
 parser.add_argument("--data_config_path", type=str, default="cfg/tinyimage.data", help="path to data config file")
 parser.add_argument("--workers", type=int, default=4, help="number of cpu threads to use during batch generation")
@@ -154,7 +154,7 @@ device = torch.device("cuda")
 vgg = vgg.to(device)
 
 optimizer = torch.optim.SGD(vgg.parameters(), lr=0.01, momentum=0.9, weight_decay=0.0001)
-lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 50)
+lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 5, gamma=0.2)
 
 max_epochs = 20
 
@@ -199,9 +199,9 @@ try:
 #                 print('{:.1f}% of validation'.format(idx / float(len(validloader)) * 100), end='\r')
 
         valid_acc = num_hits / num_instances * 100
-        print(f' Validation acc: {valid_acc}%')
             
         epoch_loss /= float(len(trainloader))
+        print(f'Epoch {idx} loss {epoch_loss:3f} validation acc: {valid_acc:3f}%')
 #         print("Time used in one epoch: {:.1f}".format(time.time() - start))
         
         # save model
