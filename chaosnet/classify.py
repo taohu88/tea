@@ -17,148 +17,204 @@ from torch.utils.data import DataLoader
 from torchvision import datasets
 from torchvision import transforms
 from torch.autograd import Variable
+from torchvision.models.vgg import *
+
 import torch.optim as optim
+from data.tiny_image_set import TinyImageSet
+
+
+class MyVGG(nn.Module):
+
+    def __init__(self, features, num_classes=1000, init_weights=True):
+        super(MyVGG, self).__init__()
+        self.features = features
+        self.classifier = nn.Sequential(
+            nn.Linear(512 * 7 * 7, 4096),
+            nn.ReLU(True),
+            nn.Dropout(),
+            nn.Linear(4096, 4096),
+            nn.ReLU(True),
+            nn.Dropout(),
+            nn.Linear(4096, num_classes),
+        )
+        if init_weights:
+            self._initialize_weights()
+
+    def forward(self, x):
+        x = self.features(x)
+        x = x.view(x.size(0), -1)
+        x = self.classifier(x)
+        return x
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+                if m.bias is not None:
+                    m.bias.data.zero_()
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+            elif isinstance(m, nn.Linear):
+                m.weight.data.normal_(0, 0.01)
+                m.bias.data.zero_()
+
+
+def make_layers(cfg, batch_norm=False):
+    layers = []
+    in_channels = 3
+    for v in cfg:
+        if v == 'M':
+            layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
+        else:
+            conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1)
+            if batch_norm:
+                layers += [conv2d, nn.BatchNorm2d(v), nn.ReLU(inplace=True)]
+            else:
+                layers += [conv2d, nn.ReLU(inplace=True)]
+            in_channels = v
+    return nn.Sequential(*layers)
+
+
+cfg = {
+    'A': [64, 64, 'M', 128, 128, 256, 256, 'M', 512, 512, 'M'],
+    'B': [64, 64, 'M', 128, 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
+    'D': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
+    'E': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
+}
+
+
+def myvgg11_bn(pretrained=False, **kwargs):
+    """VGG 11-layer model (configuration "A") with batch normalization
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    if pretrained:
+        kwargs['init_weights'] = False
+    model = VGG(make_layers(cfg['A'], batch_norm=True), **kwargs)
+    if pretrained:
+        model.load_state_dict(model_zoo.load_url(model_urls['vgg11_bn']))
+    return model
+
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--batch_size", type=int, default=16, help="size of each image batch")
-parser.add_argument("--model_config_path", type=str, default="cfg/yolov3.cfg", help="path to model config file")
-parser.add_argument("--data_config_path", type=str, default="cfg/coco.data", help="path to data config file")
-parser.add_argument("--weights_path", type=str, default="yolov3.weights", help="path to weights file")
-parser.add_argument("--class_path", type=str, default="data/coco.names", help="path to class label file")
-parser.add_argument("--iou_thres", type=float, default=0.5, help="iou threshold required to qualify as detected")
-parser.add_argument("--conf_thres", type=float, default=0.5, help="object confidence threshold")
-parser.add_argument("--nms_thres", type=float, default=0.45, help="iou thresshold for non-maximum suppression")
-parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
-parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
+parser.add_argument("--batch_size", type=int, default=160, help="size of each image batch")
+parser.add_argument("--model_config_path", type=str, default="cfg/vgg-16.cfg", help="path to model config file")
+parser.add_argument("--data_config_path", type=str, default="cfg/tinyimage.data", help="path to data config file")
+parser.add_argument("--workers", type=int, default=4, help="number of cpu threads to use during batch generation")
 parser.add_argument("--use_cuda", type=bool, default=True, help="whether to use cuda if available")
 opt = parser.parse_args()
 print(opt)
 
 cuda = torch.cuda.is_available() and opt.use_cuda
 
+
 # Get data configuration
 data_config = parse_data_config(opt.data_config_path)
-test_path = data_config["valid"]
+train_path = data_config["train"]
+valid_path = data_config["valid"]
 num_classes = int(data_config["classes"])
 
-# Initiate model
-model = Darknet(opt.model_config_path)
-model.load_weights(opt.weights_path)
+# normalize = transforms.Normalize((.5, .5, .5), (.5, .5, .5))
 
-if cuda:
-    model = model.cuda()
+train_aug = transforms.Compose([
+    transforms.RandomResizedCrop(56),
+    transforms.RandomHorizontalFlip(),
+    # transforms.RandomRotation(10)
+    ])
 
-model.eval()
+val_aug = transforms.Compose([
+    transforms.Resize(64),
+    transforms.CenterCrop(56)
+    ])
 
-# Get dataloader
-dataset = ListDataset(test_path)
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=opt.batch_size, shuffle=False, num_workers=opt.n_cpu)
+training_transform = transforms.Compose([
+    transforms.Lambda(lambda x: x.convert("RGB")),
+    train_aug,
+    transforms.ToTensor(),
+    #normalize
+    ])
 
-Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
+valid_transform = transforms.Compose([
+    transforms.Lambda(lambda x: x.convert("RGB")),
+    val_aug,
+    transforms.ToTensor(),
+    #normalize
+    ])
 
-print("Compute mAP...")
+in_memory = True
+training_set = TinyImageSet(train_path, 'train', transform=training_transform, in_memory=in_memory)
+valid_set = TinyImageSet(valid_path, 'val', transform=valid_transform, in_memory=in_memory)
 
-all_detections = []
-all_annotations = []
+vgg = myvgg11_bn(num_classes=num_classes)
+print('Model', vgg)
+device = torch.device("cuda")
+vgg = vgg.to(device)
 
-for batch_i, (_, imgs, targets) in enumerate(tqdm.tqdm(dataloader, desc="Detecting objects")):
+optimizer = torch.optim.SGD(vgg.parameters(), lr=0.01, momentum=0.9, weight_decay=0.0001)
+lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 50)
 
-    imgs = Variable(imgs.type(Tensor))
+max_epochs = 20
 
-    with torch.no_grad():
-        outputs = model(imgs)
-        outputs = non_max_suppression(outputs, 80, conf_thres=opt.conf_thres, nms_thres=opt.nms_thres)
+workers = opt.workers
+batch_size = opt.batch_size
+trainloader = DataLoader(training_set, batch_size=batch_size, shuffle=True, num_workers=workers)
+validloader = DataLoader(valid_set, batch_size=batch_size, num_workers=workers)
 
-    for output, annotations in zip(outputs, targets):
+ce_loss = nn.CrossEntropyLoss()
 
-        all_detections.append([np.array([]) for _ in range(num_classes)])
-        if output is not None:
-            # Get predicted boxes, confidence scores and labels
-            pred_boxes = output[:, :5].cpu().numpy()
-            scores = output[:, 4].cpu().numpy()
-            pred_labels = output[:, -1].cpu().numpy()
+try:
+    for epoch in range(max_epochs):
+        start = time.time()
+        lr_scheduler.step()
+        epoch_loss = 0.0
+        vgg.train()
+        for idx, (data, target) in enumerate(trainloader):
+            data, target = data.to(device), target.to(device)
+            optimizer.zero_grad()
+            outputs = vgg(data)            
+            batch_loss = ce_loss(outputs, target)
+            batch_loss.backward()
+            optimizer.step()
+            epoch_loss += batch_loss.item()
+        
+            if idx % 10 == 0:
+                print('{:.1f}% of epoch'.format(idx / float(len(trainloader)) * 100), end='\r')
+            
+            
+        # evaluate on validation set
+        num_hits = 0
+        num_instances = len(valid_set)
+        
+        with torch.no_grad():
+            resnet.eval()
+            for idx, (data, target) in enumerate(validloader):
+                data, target = data.to(device), target.to(device)
+                output = vgg(data)
+                _, pred = torch.max(output, 1) # output.topk(1) *1 = top1
 
-            # Order by confidence
-            sort_i = np.argsort(scores)
-            pred_labels = pred_labels[sort_i]
-            pred_boxes = pred_boxes[sort_i]
+                num_hits += (pred == target).sum().item()
+#                 print('{:.1f}% of validation'.format(idx / float(len(validloader)) * 100), end='\r')
 
-            for label in range(num_classes):
-                all_detections[-1][label] = pred_boxes[pred_labels == label]
-
-        all_annotations.append([np.array([]) for _ in range(num_classes)])
-        if any(annotations[:, -1] > 0):
-
-            annotation_labels = annotations[annotations[:, -1] > 0, 0].numpy()
-            _annotation_boxes = annotations[annotations[:, -1] > 0, 1:]
-
-            # Reformat to x1, y1, x2, y2 and rescale to image dimensions
-            annotation_boxes = np.empty_like(_annotation_boxes)
-            annotation_boxes[:, 0] = _annotation_boxes[:, 0] - _annotation_boxes[:, 2] / 2
-            annotation_boxes[:, 1] = _annotation_boxes[:, 1] - _annotation_boxes[:, 3] / 2
-            annotation_boxes[:, 2] = _annotation_boxes[:, 0] + _annotation_boxes[:, 2] / 2
-            annotation_boxes[:, 3] = _annotation_boxes[:, 1] + _annotation_boxes[:, 3] / 2
-            annotation_boxes *= opt.img_size
-
-            for label in range(num_classes):
-                all_annotations[-1][label] = annotation_boxes[annotation_labels == label, :]
-
-average_precisions = {}
-for label in range(num_classes):
-    true_positives = []
-    scores = []
-    num_annotations = 0
-
-    for i in tqdm.tqdm(range(len(all_annotations)), desc=f"Computing AP for class '{label}'"):
-        detections = all_detections[i][label]
-        annotations = all_annotations[i][label]
-
-        num_annotations += annotations.shape[0]
-        detected_annotations = []
-
-        for *bbox, score in detections:
-            scores.append(score)
-
-            if annotations.shape[0] == 0:
-                true_positives.append(0)
-                continue
-
-            overlaps = bbox_iou_numpy(np.expand_dims(bbox, axis=0), annotations)
-            assigned_annotation = np.argmax(overlaps, axis=1)
-            max_overlap = overlaps[0, assigned_annotation]
-
-            if max_overlap >= opt.iou_thres and assigned_annotation not in detected_annotations:
-                true_positives.append(1)
-                detected_annotations.append(assigned_annotation)
-            else:
-                true_positives.append(0)
-
-    # no annotations -> AP for this class is 0
-    if num_annotations == 0:
-        average_precisions[label] = 0
-        continue
-    true_positives = np.array(true_positives)
-    false_positives = np.ones_like(true_positives) - true_positives
-    # sort by score
-    indices = np.argsort(-np.array(scores))
-    false_positives = false_positives[indices]
-    true_positives = true_positives[indices]
-
-    # compute false positives and true positives
-    false_positives = np.cumsum(false_positives)
-    true_positives = np.cumsum(true_positives)
-
-    # compute recall and precision
-    recall = true_positives / num_annotations
-    precision = true_positives / np.maximum(true_positives + false_positives, np.finfo(np.float64).eps)
-
-    # compute average precision
-    average_precision = compute_ap(recall, precision)
-    average_precisions[label] = average_precision
-
-print("Average Precisions:")
-for c, ap in average_precisions.items():
-    print(f"+ Class '{c}' - AP: {ap}")
-
-mAP = np.mean(list(average_precisions.values()))
-print(f"mAP: {mAP}")
+        valid_acc = num_hits / num_instances * 100
+        print(f' Validation acc: {valid_acc}%')
+        sw.add_scalar('Validation Accuracy(%)', valid_acc, epoch + 1)
+            
+        epoch_loss /= float(len(trainloader))
+#         print("Time used in one epoch: {:.1f}".format(time.time() - start))
+        
+        # save model
+        torch.save(resnet.state_dict(), 'models/weight.pth')
+        
+        # record loss
+        sw.add_scalar('Running Loss', epoch_loss, epoch + 1)
+        
+        
+except KeyboardInterrupt:
+    print("Interrupted. Releasing resources...")
+    
+finally:
+    # this is only required for old GPU
+    torch.cuda.empty_cache()
