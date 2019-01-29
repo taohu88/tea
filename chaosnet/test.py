@@ -3,7 +3,7 @@ from __future__ import division
 from models.yolo3 import Darknet
 from utils.utils import *
 from dataset.datasets import *
-from parser.parse_config import *
+from config_reader.parse_config import *
 
 import argparse
 import tqdm

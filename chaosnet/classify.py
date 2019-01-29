@@ -9,7 +9,7 @@ from models.builder import get_input_size
 from models.core import BasicModel
 from utils.utils import *
 from dataset.datasets import *
-from parser.parse_config import *
+from config_reader.parse_config import *
 
 
 if __name__ == '__main__':

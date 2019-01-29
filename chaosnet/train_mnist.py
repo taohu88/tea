@@ -2,7 +2,7 @@ import torch
 from torchvision import datasets, transforms
 from models.builder import get_input_size
 from models.core import BasicModel
-from parser.parse_config import parse_model_config
+from config_reader.parse_config import parse_model_config
 
 from fastai.script import call_parse
 from fastai.basic_data import DataBunch
@@ -43,7 +43,10 @@ def main(cfg_file='../cfg/lecnn.cfg', batch_size=256, cuda=True):
 
     data = DataBunch(train_loader, test_loader, device=device)
     learn = Learner(data, model, loss_func=torch.nn.CrossEntropyLoss(), metrics=accuracy)
-    fit_one_cycle(learn, 10, 0.001)
+    learn.fit(1, 0.001)
+    learn.summary()
+
+    # fit_one_cycle(learn, 10, 0.001)
     # lr_find(learn)
     # learn.recorder.plot()
     # plt.show()
