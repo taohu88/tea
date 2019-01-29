@@ -3,8 +3,18 @@ from __future__ import division
 import torch.nn as nn
 from functools import reduce
 from utils.cal_sizes import conv2d_out_shape
+from modules.darkmodules import Identity, SumLayer, ConcatLayer, YOLO3Layer
 
-from modules.darkmodules import *
+
+def get_input_size(hyperparams):
+    """
+    :param hyperparams:
+    :return (Batch, Channel, H, W) as used in pytorch
+    """
+    c = int(hyperparams["channels"])
+    h = int(hyperparams["crop_height"]) if "crop_height" in hyperparams else int(hyperparams["height"])
+    w = int(hyperparams["crop_width"]) if "crop_width" in hyperparams else int(hyperparams["width"])
+    return (None, c, h, w)
 
 
 def make_activation(act_name, module_def):
@@ -119,6 +129,7 @@ def make_yolo3_layer(module_def, in_sizes, layer_num=None):
 _BUILDERS_ = {
     "convolutional": make_conv2d_layer,
     "connected": make_fc_layer,
+    "dropout": make_dropout_layer,
     "maxpool": make_maxpool2d_layer,
     "upsample": make_upsample_layer,
     "route": make_route_layer,
@@ -127,51 +138,24 @@ _BUILDERS_ = {
 }
 
 
-def get_input_size(hyperparams):
-    """
-    :param hyperparams:
-    :return (Batch, Channel, H, W) as used in pytorch
-    """
-    return (None, int(hyperparams["channels"]),
-                  int(hyperparams["height"]),
-                  int(hyperparams["width"]))
+def get_builders():
+    return _BUILDERS_
 
 
-def create_modules(module_defs):
+def create_module_list(module_defs, input_sz):
     """
     Constructs module list of layer blocks from module configuration in module_defs
     """
-    hyperparams = module_defs.pop(0)
-    output_sizes = [get_input_size(hyperparams)]
+    output_sizes = [input_sz]
     module_list = nn.ModuleList()
+    builders = get_builders()
     for i, module_def in enumerate(module_defs):
-        if module_def["type"] == "convolutional":
-            creat_fun = _BUILDERS_[module_def["type"]]
-            module, out_sz = creat_fun(module_def, output_sizes, i)
+        creat_fun = builders[module_def["type"]]
+        module, out_sz = creat_fun(module_def, output_sizes, i)
 
-        elif module_def["type"] == "maxpool":
-            creat_fun = _BUILDERS_[module_def["type"]]
-            module, out_sz = creat_fun(module_def, output_sizes, i)
-
-        elif module_def["type"] == "upsample":
-            creat_fun = _BUILDERS_[module_def["type"]]
-            module, out_sz = creat_fun(module_def, output_sizes, i)
-
-        elif module_def["type"] == "route":
-            creat_fun = _BUILDERS_[module_def["type"]]
-            module, out_sz = creat_fun(module_def, output_sizes, i)
-
-        elif module_def["type"] == "shortcut":
-            creat_fun = _BUILDERS_[module_def["type"]]
-            module, out_sz = creat_fun(module_def, output_sizes, i)
-
-        elif module_def["type"] == "yolo":
-            creat_fun = _BUILDERS_[module_def["type"]]
-            module, out_sz = creat_fun(module_def, output_sizes, i)
-
-        # Register module list and number of output filters
+        # Save module_list, and output_sz
         module_list.append(module)
         output_sizes.append(out_sz)
         print(f"Layer {i} {module_def['type']} in_sz {output_sizes[-2][1:]} out_sz {output_sizes[-1][1:]}")
 
-    return hyperparams, module_list
+    return module_list

@@ -2,15 +2,32 @@ from __future__ import division
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch.autograd import Variable
 import numpy as np
 
-from models.builder import create_modules
+from models.builder import get_builders, get_input_size
 from utils.parse_config import parse_model_config
 from collections import defaultdict
+from modules.darkmodules import SumLayer, ConcatLayer, YOLO3Layer
 
-from modules.darkmodules import *
+
+def create_yolo_modules(module_defs):
+    """
+    Constructs module list of layer blocks from module configuration in module_defs
+    """
+    hyperparams = module_defs.pop(0)
+    output_sizes = [get_input_size(hyperparams)]
+    module_list = nn.ModuleList()
+    builders = get_builders()
+    for i, module_def in enumerate(module_defs):
+        creat_fun = builders[module_def["type"]]
+        module, out_sz = creat_fun(module_def, output_sizes, i)
+
+        # Save module_list, and output_sz
+        module_list.append(module)
+        output_sizes.append(out_sz)
+        print(f"Layer {i} {module_def['type']} in_sz {output_sizes[-2][1:]} out_sz {output_sizes[-1][1:]}")
+
+    return hyperparams, module_list
 
 
 class Darknet(nn.Module):
@@ -19,7 +36,7 @@ class Darknet(nn.Module):
     def __init__(self, config_path, img_size=416):
         super(Darknet, self).__init__()
         self.module_defs = parse_model_config(config_path)
-        self.hyperparams, self.module_list = create_modules(self.module_defs)
+        self.hyperparams, self.module_list = create_yolo_modules(self.module_defs)
         self.img_size = img_size
         self.seen = 0
         self.header_info = np.array([0, 0, 0, self.seen, 0])

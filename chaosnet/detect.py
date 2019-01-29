@@ -30,10 +30,9 @@ parser.add_argument('--n_cpu', type=int, default=8, help='number of cpu threads 
 parser.add_argument('--img_size', type=int, default=416, help='size of each image dimension')
 parser.add_argument('--use_cuda', type=bool, default=True, help='whether to use cuda if available')
 opt = parser.parse_args()
-print(opt)
 
 if __name__ == '__main__':
-
+    print(opt)
     cuda = torch.cuda.is_available() and opt.use_cuda
 
     os.makedirs('output', exist_ok=True)
