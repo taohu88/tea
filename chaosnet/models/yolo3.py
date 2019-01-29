@@ -5,9 +5,9 @@ import torch.nn as nn
 import numpy as np
 
 from models.builder import has_batch_normalize, get_input_size, create_module_list
-from utils.parse_config import parse_model_config
+from parser.parse_config import parse_model_config
 from collections import defaultdict
-from modules.darkmodules import SumLayer, ConcatLayer, YOLO3Layer
+from modules.core import SumLayer, ConcatLayer, YOLO3Layer
 
 
 def create_yolo_modules(module_defs):

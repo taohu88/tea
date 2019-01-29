@@ -2,29 +2,22 @@ from __future__ import division
 
 from models.yolo3 import Darknet
 from utils.utils import *
-from utils.datasets import *
-from utils.parse_config import *
+from dataset.datasets import *
+from parser.parse_config import *
 
-import os
-import sys
-import time
-import datetime
 import argparse
 import tqdm
 
 import torch
 from torch.utils.data import DataLoader
-from torchvision import datasets
-from torchvision import transforms
 from torch.autograd import Variable
-import torch.optim as optim
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--batch_size", type=int, default=16, help="size of each image batch")
 parser.add_argument("--model_config_path", type=str, default="cfg/yolov3.cfg", help="path to model config file")
-parser.add_argument("--data_config_path", type=str, default="cfg/coco.data", help="path to data config file")
+parser.add_argument("--data_config_path", type=str, default="cfg/coco.dataset", help="path to dataset config file")
 parser.add_argument("--weights_path", type=str, default="yolov3.weights", help="path to weights file")
-parser.add_argument("--class_path", type=str, default="data/coco.names", help="path to class label file")
+parser.add_argument("--class_path", type=str, default="dataset/coco.names", help="path to class label file")
 parser.add_argument("--iou_thres", type=float, default=0.5, help="iou threshold required to qualify as detected")
 parser.add_argument("--conf_thres", type=float, default=0.5, help="object confidence threshold")
 parser.add_argument("--nms_thres", type=float, default=0.45, help="iou thresshold for non-maximum suppression")
@@ -36,7 +29,7 @@ print(opt)
 
 cuda = torch.cuda.is_available() and opt.use_cuda
 
-# Get data configuration
+# Get dataset configuration
 data_config = parse_data_config(opt.data_config_path)
 test_path = data_config["valid"]
 num_classes = int(data_config["classes"])

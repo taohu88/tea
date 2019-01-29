@@ -4,11 +4,20 @@ import re
 import torch.nn as nn
 from functools import reduce
 from utils.cal_sizes import conv2d_out_shape
-from modules.darkmodules import SmartLinear, Identity, SumLayer, ConcatLayer, YOLO3Layer
+from modules.core import SmartLinear, SumLayer, ConcatLayer
+from modules.yolo3_layer import YOLO3Layer
+
+
+def get_int(module_def, key):
+    return int(module_def.get(key, 0))
+
+
+def is_true(module_def, key):
+    return get_int(module_def, key) > 0
 
 
 def has_batch_normalize(module_def):
-    return int(module_def["batch_normalize"]) if "batch_normalize" in module_def else 0
+    return is_true(module_def, "batch_normalize")
 
 
 def get_input_size(hyperparams):
@@ -22,8 +31,11 @@ def get_input_size(hyperparams):
     return (None, c, h, w)
 
 
-def make_activation(act_name, module_def):
-    if act_name == "relu":
+def make_activation(module_def):
+    act_name = module_def.get("activation", None)
+    if act_name is None:
+        act = None
+    elif act_name == "relu":
         act = nn.ReLU(True)
     # Darknet by default use 0.1
     elif act_name == "leaky":
@@ -48,10 +60,10 @@ def make_dropout_layer(module_def, in_sizes, layer_num=None):
 def make_fc_layer(module_def, in_sizes, layer_num=None):
     prev_out_sz = in_sizes[-1]
     out_sz = int(module_def["output"])
-    act = make_activation(module_def["activation"], module_def)
+    act = make_activation(module_def)
     # from last layer without batch dimension (Batch, F/C, H, W)
     in_sz = reduce(lambda x, y: x * y, prev_out_sz[1:])
-    if int(module_def.get("apply_view", "0")):
+    if is_true(module_def, "reshape"):
         module_l = [SmartLinear(in_sz, out_sz)]
     else:
         module_l = [nn.Linear(in_sz, out_sz)]
@@ -71,8 +83,8 @@ def make_conv2d_layer(module_def, in_sizes, layer_num=None):
     filters = int(module_def["filters"])
     kernel_size = int(module_def["size"])
     stride = int(module_def["stride"])
-    pad = (kernel_size - 1) // 2 if int(module_def["pad"]) else 0
-    act = make_activation(module_def["activation"], module_def)
+    pad = (kernel_size - 1) // 2 if is_true(module_def, "pad") else 0
+    act = make_activation(module_def)
 
     module_l = [nn.Conv2d(in_filters, filters, kernel_size, stride, pad, bias= not bn)]
     if bn:
@@ -89,7 +101,7 @@ def make_maxpool2d_layer(module_def, in_sizes, layer_num=None):
     prev_out_sz = in_sizes[-1]
     kernel_size = int(module_def["size"])
     stride = int(module_def["stride"])
-    pad = (kernel_size - 1) // 2 if "pad" in module_def else 0
+    pad = (kernel_size - 1) // 2 if is_true(module_def, "pad") else 0
     module = nn.MaxPool2d(kernel_size, stride, pad)
     out_h, out_w = conv2d_out_shape(prev_out_sz[2:], kernel_size, stride, pad)
     return module, (None, prev_out_sz[1], out_h, out_w)

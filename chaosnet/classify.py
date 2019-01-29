@@ -1,33 +1,22 @@
 from __future__ import division
 
-import os
-import sys
-import time
-import datetime
 import argparse
-import tqdm
 
-import torch
 from torch.utils.data import DataLoader
-from torchvision import datasets
-from torchvision import transforms
-from torch.autograd import Variable
-from torchvision.models.vgg import *
 
-import torch.optim as optim
-from data.tiny_image_set import TinyImageSet
+from dataset.tiny_image_set import TinyImageSet
 from models.builder import get_input_size
-from models.common_model import CommonModel
+from models.core import BasicModel
 from utils.utils import *
-from utils.datasets import *
-from utils.parse_config import *
+from dataset.datasets import *
+from parser.parse_config import *
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", type=int, default=374, help="size of each image batch")
     parser.add_argument("--cfg_path", type=str, default="cfg/my-vgg.cfg", help="path to model config file")
-    parser.add_argument("--data_config_path", type=str, default="cfg/tinyimage.data", help="path to data config file")
+    parser.add_argument("--data_config_path", type=str, default="cfg/tinyimage.dataset", help="path to dataset config file")
     parser.add_argument("--workers", type=int, default=4, help="number of cpu threads to use during batch generation")
     parser.add_argument("--use_cuda", type=bool, default=True, help="whether to use cuda if available")
 
@@ -42,14 +31,14 @@ if __name__ == '__main__':
     input_sz = get_input_size(hyperparams)
 
     # Set up model
-    model = CommonModel(module_defs, input_sz)
+    model = BasicModel(module_defs, input_sz)
     print(f'Model \n {model}')
 
     if cuda:
         model.cuda()
     device = torch.device("cuda:0" if cuda else "cpu")
 
-    # Get data configuration
+    # Get dataset configuration
     data_config = parse_data_config(opt.data_config_path)
     train_path = data_config["train"]
     valid_path = data_config["valid"]
