@@ -9,9 +9,21 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-__all__ = ['Conv2dBatchReLU', 'GlobalAvgPool2d', 'Identity', 'SumLayer', 'ConcatLayer',
+__all__ = ['SmartLinear', 'Conv2dBatchReLU', 'GlobalAvgPool2d', 'Identity', 'SumLayer', 'ConcatLayer',
            'PaddedMaxPool2d', 'Reorg', 'YOLO3Layer']
 log = logging.getLogger(__name__)
+
+
+class SmartLinear(nn.Linear):
+    r"""Applies a linear transformation to the incoming data: :math:`y = xA^T + b`
+        It only automatically set input as (Batch, all-dimension)
+    """
+    def __init__(self, in_features, out_features, bias=True):
+        super(SmartLinear, self).__init__(in_features, out_features, bias)
+
+    def forward(self, x):
+        x = x.view(x.size(0), -1)
+        return F.linear(x, self.weight, self.bias)
 
 
 class Conv2dBatchReLU(nn.Module):

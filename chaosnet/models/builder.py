@@ -4,7 +4,7 @@ import re
 import torch.nn as nn
 from functools import reduce
 from utils.cal_sizes import conv2d_out_shape
-from modules.darkmodules import Identity, SumLayer, ConcatLayer, YOLO3Layer
+from modules.darkmodules import SmartLinear, Identity, SumLayer, ConcatLayer, YOLO3Layer
 
 
 def has_batch_normalize(module_def):
@@ -51,8 +51,11 @@ def make_fc_layer(module_def, in_sizes, layer_num=None):
     act = make_activation(module_def["activation"], module_def)
     # from last layer without batch dimension (Batch, F/C, H, W)
     in_sz = reduce(lambda x, y: x * y, prev_out_sz[1:])
+    if int(module_def.get("apply_view", "0")):
+        module_l = [SmartLinear(in_sz, out_sz)]
+    else:
+        module_l = [nn.Linear(in_sz, out_sz)]
 
-    module_l = [nn.Linear(in_sz, out_sz)]
     if act:
         module_l.append(act)
 

@@ -19,7 +19,7 @@ class CommonModel(nn.Module):
             if (type(module) == SumLayer) or \
                (type(module) == ConcatLayer):
                 x = module(layer_outputs)
-            else:
+            elif (type(module)):
                 x = module(x)
             layer_outputs.append(x)
         # return last as an output

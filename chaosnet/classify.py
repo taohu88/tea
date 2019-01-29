@@ -43,108 +43,107 @@ if __name__ == '__main__':
 
     # Set up model
     model = CommonModel(module_defs, input_sz)
-
     print(f'Model \n {model}')
 
     if cuda:
         model.cuda()
-    vgg = model
+    device = torch.device("cuda:0" if cuda else "cpu")
 
-    # # Get data configuration
-    # data_config = parse_data_config(opt.data_config_path)
-    # train_path = data_config["train"]
-    # valid_path = data_config["valid"]
-    # num_classes = int(data_config["classes"])
-    #
-    # # normalize = transforms.Normalize((.5, .5, .5), (.5, .5, .5))
-    #
-    # train_aug = transforms.Compose([
-    #     transforms.RandomResizedCrop(56),
-    #     transforms.RandomHorizontalFlip(),
-    #     # transforms.RandomRotation(10)
-    #     ])
-    #
-    # val_aug = transforms.Compose([
-    #     transforms.Resize(64),
-    #     transforms.CenterCrop(56)
-    #     ])
-    #
-    # training_transform = transforms.Compose([
-    #     transforms.Lambda(lambda x: x.convert("RGB")),
-    #     train_aug,
-    #     transforms.ToTensor(),
-    #     #normalize
-    #     ])
-    #
-    # valid_transform = transforms.Compose([
-    #     transforms.Lambda(lambda x: x.convert("RGB")),
-    #     val_aug,
-    #     transforms.ToTensor(),
-    #     #normalize
-    #     ])
-    #
-    # in_memory = False
-    # training_set = TinyImageSet(train_path, 'train', transform=training_transform, in_memory=in_memory)
-    # valid_set = TinyImageSet(valid_path, 'val', transform=valid_transform, in_memory=in_memory)
-    #
-    # optimizer = torch.optim.SGD(vgg.parameters(), lr=0.01, momentum=0.9, weight_decay=0.0001)
-    # lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 5, gamma=0.2)
-    #
-    # max_epochs = 20
-    #
-    # workers = opt.workers
-    # batch_size = opt.batch_size
-    # trainloader = DataLoader(training_set, batch_size=batch_size, shuffle=True, num_workers=workers)
-    # validloader = DataLoader(valid_set, batch_size=batch_size, num_workers=workers)
-    #
-    # ce_loss = nn.CrossEntropyLoss()
-    #
-    # try:
-    #     for epoch in range(max_epochs):
-    #         start = time.time()
-    #         lr_scheduler.step()
-    #         epoch_loss = 0.0
-    #         vgg.train()
-    #         for idx, (data, target) in enumerate(trainloader):
-    #             data, target = data.to(device), target.to(device)
-    #             optimizer.zero_grad()
-    #             outputs = vgg(data)
-    #             batch_loss = ce_loss(outputs, target)
-    #             batch_loss.backward()
-    #             optimizer.step()
-    #             epoch_loss += batch_loss.item()
-    #
-    #             if idx % 10 == 0:
-    #                 print('{:.1f}% of epoch'.format(idx / float(len(trainloader)) * 100), end='\r')
-    #
-    #
-    #         # evaluate on validation set
-    #         num_hits = 0
-    #         num_instances = len(valid_set)
-    #
-    #         with torch.no_grad():
-    #             vgg.eval()
-    #             for idx, (data, target) in enumerate(validloader):
-    #                 data, target = data.to(device), target.to(device)
-    #                 output = vgg(data)
-    #                 _, pred = torch.max(output, 1) # output.topk(1) *1 = top1
-    #
-    #                 num_hits += (pred == target).sum().item()
-    # #                 print('{:.1f}% of validation'.format(idx / float(len(validloader)) * 100), end='\r')
-    #
-    #         valid_acc = num_hits / num_instances * 100
-    #
-    #         epoch_loss /= float(len(trainloader))
-    #         print(f'Epoch {epoch} loss {epoch_loss:3f} validation acc: {valid_acc:3f}%')
-    # #         print("Time used in one epoch: {:.1f}".format(time.time() - start))
-    #
-    #         # save model
-    #         torch.save(vgg.state_dict(), 'output/weight.pth')
-    #
-    #
-    # except KeyboardInterrupt:
-    #     print("Interrupted. Releasing resources...")
-    #
-    # finally:
-    #     # this is only required for old GPU
-    #     torch.cuda.empty_cache()
+    # Get data configuration
+    data_config = parse_data_config(opt.data_config_path)
+    train_path = data_config["train"]
+    valid_path = data_config["valid"]
+    num_classes = int(data_config["classes"])
+    
+    normalize = transforms.Normalize((.5, .5, .5), (.5, .5, .5))
+    
+    train_aug = transforms.Compose([
+        transforms.RandomResizedCrop(56),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(10)
+        ])
+    
+    val_aug = transforms.Compose([
+        transforms.Resize(64),
+        transforms.CenterCrop(56)
+        ])
+    
+    training_transform = transforms.Compose([
+        transforms.Lambda(lambda x: x.convert("RGB")),
+        train_aug,
+        transforms.ToTensor(),
+        normalize
+        ])
+    
+    valid_transform = transforms.Compose([
+        transforms.Lambda(lambda x: x.convert("RGB")),
+        val_aug,
+        transforms.ToTensor(),
+        normalize
+        ])
+    
+    in_memory = True
+    training_set = TinyImageSet(train_path, 'train', transform=training_transform, in_memory=in_memory)
+    valid_set = TinyImageSet(valid_path, 'val', transform=valid_transform, in_memory=in_memory)
+    
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=0.0001)
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 5, gamma=0.2)
+    
+    max_epochs = 20
+    
+    workers = opt.workers
+    batch_size = opt.batch_size
+    trainloader = DataLoader(training_set, batch_size=batch_size, shuffle=True, num_workers=workers)
+    validloader = DataLoader(valid_set, batch_size=batch_size, num_workers=workers)
+    
+    ce_loss = nn.CrossEntropyLoss()
+    
+    try:
+        for epoch in range(max_epochs):
+            start = time.time()
+            lr_scheduler.step()
+            epoch_loss = 0.0
+            model.train()
+            for idx, (data, target) in enumerate(trainloader):
+                data, target = data.to(device), target.to(device)
+                optimizer.zero_grad()
+                outputs = model(data)
+                batch_loss = ce_loss(outputs, target)
+                batch_loss.backward()
+                optimizer.step()
+                epoch_loss += batch_loss.item()
+    
+                if idx % 10 == 0:
+                    print('{:.1f}% of epoch'.format(idx / float(len(trainloader)) * 100), end='\r')
+    
+    
+            # evaluate on validation set
+            num_hits = 0
+            num_instances = len(valid_set)
+    
+            with torch.no_grad():
+                model.eval()
+                for idx, (data, target) in enumerate(validloader):
+                    data, target = data.to(device), target.to(device)
+                    output = model(data)
+                    _, pred = torch.max(output, 1) # output.topk(1) *1 = top1
+    
+                    num_hits += (pred == target).sum().item()
+    #                 print('{:.1f}% of validation'.format(idx / float(len(validloader)) * 100), end='\r')
+    
+            valid_acc = num_hits / num_instances * 100
+    
+            epoch_loss /= float(len(trainloader))
+            print(f'Epoch {epoch} loss {epoch_loss:3f} validation acc: {valid_acc:3f}%')
+    #         print("Time used in one epoch: {:.1f}".format(time.time() - start))
+    
+            # save model
+            torch.save(model.state_dict(), 'output/weight.pth')
+    
+    
+    except KeyboardInterrupt:
+        print("Interrupted. Releasing resources...")
+    
+    finally:
+        # this is only required for old GPU
+        torch.cuda.empty_cache()
