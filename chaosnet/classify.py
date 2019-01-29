@@ -134,7 +134,7 @@ if __name__ == '__main__':
             valid_acc = num_hits / num_instances * 100
     
             epoch_loss /= float(len(trainloader))
-            print(f'Epoch {epoch} {(time.time() - start):.1f} loss {epoch_loss:.3f} validation acc: {valid_acc:.3f}%')
+            print(f'Epoch {epoch} time {(time.time() - start):.1f}s loss {epoch_loss:.3f} validation acc: {valid_acc:.3f}%')
     
             # save model
             torch.save(model.state_dict(), 'output/weight.pth')
