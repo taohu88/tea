@@ -26,7 +26,7 @@ from utils.parse_config import *
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", type=int, default=374, help="size of each image batch")
-    parser.add_argument("--cfg_path", type=str, default="cfg/vgg-16.cfg", help="path to model config file")
+    parser.add_argument("--cfg_path", type=str, default="cfg/my-vgg.cfg", help="path to model config file")
     parser.add_argument("--data_config_path", type=str, default="cfg/tinyimage.data", help="path to data config file")
     parser.add_argument("--workers", type=int, default=4, help="number of cpu threads to use during batch generation")
     parser.add_argument("--use_cuda", type=bool, default=True, help="whether to use cuda if available")
