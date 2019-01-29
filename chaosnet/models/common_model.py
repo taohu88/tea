@@ -19,7 +19,6 @@ class CommonModel(nn.Module):
     def _initialize_weights(self):
         i = 0
         for m in self.modules():
-            print(f'initalizing {i} {m}')
             i += 1
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
