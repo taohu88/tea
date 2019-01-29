@@ -9,9 +9,28 @@ from modules.darkmodules import SumLayer, ConcatLayer, YOLO3Layer
 class CommonModel(nn.Module):
     """Common classification model"""
 
-    def __init__(self, module_defs, input_sz):
+    def __init__(self, module_defs, input_sz, init_weights=True):
         super(CommonModel, self).__init__()
         self.module_list = create_module_list(module_defs, input_sz)
+
+        if init_weights:
+            self._initialize_weights()            
+
+    def _initialize_weights(self):
+        i = 0
+        for m in self.modules():
+            print(f'initalizing {i} {m}')
+            i += 1
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, 0, 0.01)
+                nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
         layer_outputs = []
