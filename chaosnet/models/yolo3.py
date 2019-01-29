@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-from models.builder import get_builders, get_input_size
+from models.builder import has_batch_normalize, get_input_size, create_module_list
 from utils.parse_config import parse_model_config
 from collections import defaultdict
 from modules.darkmodules import SumLayer, ConcatLayer, YOLO3Layer
@@ -15,18 +15,8 @@ def create_yolo_modules(module_defs):
     Constructs module list of layer blocks from module configuration in module_defs
     """
     hyperparams = module_defs.pop(0)
-    output_sizes = [get_input_size(hyperparams)]
-    module_list = nn.ModuleList()
-    builders = get_builders()
-    for i, module_def in enumerate(module_defs):
-        creat_fun = builders[module_def["type"]]
-        module, out_sz = creat_fun(module_def, output_sizes, i)
-
-        # Save module_list, and output_sz
-        module_list.append(module)
-        output_sizes.append(out_sz)
-        print(f"Layer {i} {module_def['type']} in_sz {output_sizes[-2][1:]} out_sz {output_sizes[-1][1:]}")
-
+    input_sz = get_input_size(hyperparams)
+    module_list = create_module_list(module_defs, input_sz)
     return hyperparams, module_list
 
 
@@ -88,7 +78,8 @@ class Darknet(nn.Module):
         for i, (module_def, module) in enumerate(zip(self.module_defs, self.module_list)):
             if module_def["type"] == "convolutional":
                 conv_layer = module[0]
-                if module_def["batch_normalize"]:
+                bn = has_batch_normalize(module_def)
+                if bn:
                     # Load BN bias, weights, running mean and running variance
                     bn_layer = module[1]
                     num_b = bn_layer.bias.numel()  # Number of biases
@@ -137,7 +128,8 @@ class Darknet(nn.Module):
             if module_def["type"] == "convolutional":
                 # If batch norm, load bn first
                 conv_layer = module[0]
-                if module_def["batch_normalize"]:
+                bn = has_batch_normalize(module_def)
+                if bn:
                     # Load BN bias, weights, running mean and running variance
                     bn_layer = module[1]
                     bn_layer.bias.data.cpu().numpy().tofile(fp)

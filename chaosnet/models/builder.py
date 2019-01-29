@@ -1,9 +1,14 @@
 from __future__ import division
 
+import re
 import torch.nn as nn
 from functools import reduce
 from utils.cal_sizes import conv2d_out_shape
 from modules.darkmodules import Identity, SumLayer, ConcatLayer, YOLO3Layer
+
+
+def has_batch_normalize(module_def):
+    return int(module_def["batch_normalize"]) if "batch_normalize" in module_def else 0
 
 
 def get_input_size(hyperparams):
@@ -57,7 +62,7 @@ def make_fc_layer(module_def, in_sizes, layer_num=None):
 def make_conv2d_layer(module_def, in_sizes, layer_num=None):
     prev_out_sz = in_sizes[-1]
     in_filters = prev_out_sz[1]
-    bn = int(module_def["batch_normalize"])
+    bn = has_batch_normalize(module_def)
     filters = int(module_def["filters"])
     kernel_size = int(module_def["size"])
     stride = int(module_def["stride"])
@@ -150,7 +155,8 @@ def create_module_list(module_defs, input_sz):
     module_list = nn.ModuleList()
     builders = get_builders()
     for i, module_def in enumerate(module_defs):
-        creat_fun = builders[module_def["type"]]
+        type_name = re.split(r'-|_', module_def["type"])[0]
+        creat_fun = builders[type_name]
         module, out_sz = creat_fun(module_def, output_sizes, i)
 
         # Save module_list, and output_sz
