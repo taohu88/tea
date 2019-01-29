@@ -32,7 +32,7 @@ def make_activation(act_name, module_def):
             leaky_slope = float(module_def["leaky_slope"])
         act = nn.LeakyReLU(leaky_slope, inplace=True)
     elif act_name == "linear":
-        act = Identity()
+        act = None
     else:
         raise Exception(f"Unknown {activation} in {module_def}")
     return act
@@ -52,9 +52,11 @@ def make_fc_layer(module_def, in_sizes, layer_num=None):
     # from last layer without batch dimension (Batch, F/C, H, W)
     in_sz = reduce(lambda x, y: x * y, prev_out_sz[1:])
 
-    module = nn.Sequential(
-        nn.Linear(in_sz, out_sz),
-        act)
+    module_l = [nn.Linear(in_sz, out_sz)]
+    if act:
+        module_l.append(act)
+
+    module = nn.Sequential(*module_l)
     # Batch will be in the first dimension
     return module, (None, out_sz)
 
@@ -69,15 +71,13 @@ def make_conv2d_layer(module_def, in_sizes, layer_num=None):
     pad = (kernel_size - 1) // 2 if int(module_def["pad"]) else 0
     act = make_activation(module_def["activation"], module_def)
 
+    module_l = [nn.Conv2d(in_filters, filters, kernel_size, stride, pad, bias= not bn)]
     if bn:
-        module = nn.Sequential(
-            nn.Conv2d(in_filters, filters, kernel_size, stride, pad, bias=False),
-            nn.BatchNorm2d(filters, momentum=0.01),
-            act)
-    else:
-        module = nn.Sequential(
-            nn.Conv2d(in_filters, filters, kernel_size, stride, pad, bias=True),
-            act)
+        module_l.append(nn.BatchNorm2d(filters, momentum=0.01))
+    if act:
+        module_l.append(act)
+
+    module = nn.Sequential(*module_l)
     out_h, out_w = conv2d_out_shape(prev_out_sz[2:], kernel_size, stride, pad)
     return module, (None, filters, out_h, out_w)
 
