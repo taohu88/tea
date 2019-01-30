@@ -5,7 +5,7 @@ import torch.nn as nn
 from functools import reduce
 from models.cal_sizes import conv2d_out_shape
 from modules.core import SmartLinear, SumLayer, ConcatLayer
-from modules.yolo3_layer import YOLO3Layer
+from yolo.yolo3_layer import YOLO3Layer
 
 
 def get_int(module_def, key):

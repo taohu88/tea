@@ -11,12 +11,13 @@ from models.core import BasicModel
 from yolo.utils import *
 from dataset.tiny_imageset import TinyImageSet
 from models.cfg_parser import parse_data_config, parse_model_config
+from engine.core import find_min_lr
 
 
 from fastai.script import call_parse
 from fastai.basic_data import DataBunch
 from fastai.basic_train import Learner
-from fastai.train import lr_find
+from fastai.train import lr_find, fit_one_cycle
 from fastai.vision import accuracy
 from fastai.callbacks.tracker import EarlyStoppingCallback
 
@@ -85,10 +86,13 @@ def main(cfg_file='../cfg/my-vgg.cfg',
                     metrics=accuracy,
                     callback_fns=[partial(EarlyStoppingCallback, monitor='accuracy', min_delta=0.01, patience=2)])
 
-    # fit_one_cycle(learn, 20, 0.001)
     lr_find(learn)
-    learn.recorder.plot()
-    plt.show()
+    # learn.recorder.plot()
+    # plt.show()
+    min_lr = find_min_lr(learn.recorder.lrs, learn.recorder.losses)
+    lr = min_lr/10.0
+    print(f'Minimal lr rate is {min_lr} propose init lr {lr}')
+    fit_one_cycle(learn, 20, lr)
 
 
 #
