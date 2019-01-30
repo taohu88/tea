@@ -92,4 +92,4 @@ def main(cfg_file='../cfg/my-vgg.cfg',
     min_lr = find_min_lr(learn.recorder.lrs, learn.recorder.losses)
     lr = min_lr/10.0
     print(f'Minimal lr rate is {min_lr} propose init lr {lr}')
-    fit_one_cycle(learn, 20, lr)
+    fit_one_cycle(learn, 30, lr)
