@@ -1,3 +1,4 @@
+from functools import partial
 import torch
 from torchvision import datasets, transforms
 from models.builder import get_input_size
@@ -7,8 +8,9 @@ from config_reader.parse_config import parse_model_config
 from fastai.script import call_parse
 from fastai.basic_data import DataBunch
 from fastai.basic_train import Learner
-from fastai.train import fit_one_cycle
+from fastai.train import fit_one_cycle, lr_find
 from fastai.vision import accuracy
+from fastai.callbacks.tracker import EarlyStoppingCallback
 
 
 @call_parse
@@ -42,11 +44,11 @@ def main(cfg_file='../cfg/lecnn.cfg', batch_size=256, cuda=True):
         batch_size=batch_size, shuffle=True, **kwargs)
 
     data = DataBunch(train_loader, test_loader, device=device)
-    learn = Learner(data, model, loss_func=torch.nn.CrossEntropyLoss(), metrics=accuracy)
-    learn.fit(1, 0.001)
-    learn.summary()
+    learn = Learner(data, model, loss_func=torch.nn.CrossEntropyLoss(),
+                    metrics=accuracy,
+                    callback_fns=[partial(EarlyStoppingCallback, monitor='accuracy', min_delta=0.01, patience=2)])
 
-    # fit_one_cycle(learn, 10, 0.001)
+    fit_one_cycle(learn, 10, 0.001)
     # lr_find(learn)
     # learn.recorder.plot()
     # plt.show()
