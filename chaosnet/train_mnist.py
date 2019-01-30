@@ -1,9 +1,11 @@
 from functools import partial
 import torch
 from torchvision import datasets, transforms
+
 from models.builder import get_input_size
 from models.core import BasicModel
 from models.cfg_parser import parse_model_config
+from engine.core import find_min_lr
 
 from fastai.script import call_parse
 from fastai.basic_data import DataBunch
@@ -11,6 +13,8 @@ from fastai.basic_train import Learner
 from fastai.train import fit_one_cycle, lr_find
 from fastai.vision import accuracy
 from fastai.callbacks.tracker import EarlyStoppingCallback
+
+import matplotlib.pyplot as plt
 
 
 @call_parse
@@ -48,8 +52,11 @@ def main(cfg_file='../cfg/lecnn.cfg', batch_size=256, cuda=True):
                     metrics=accuracy,
                     callback_fns=[partial(EarlyStoppingCallback, monitor='accuracy', min_delta=0.01, patience=2)])
 
-    fit_one_cycle(learn, 10, 0.001)
-    # lr_find(learn)
+    lr_find(learn)
     # learn.recorder.plot()
     # plt.show()
+    min_lr = find_min_lr(learn.recorder.lrs, learn.recorder.losses)
+    lr = min_lr/10.0
+    print(f'Minimal lr rate is {min_lr} propose init lr {lr}')
+    fit_one_cycle(learn, 20, lr)
 
