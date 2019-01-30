@@ -23,12 +23,7 @@ _cv2_pad_to_str = {'constant':cv2.BORDER_CONSTANT,
                    'reflect':cv2.BORDER_REFLECT_101,
                    'symmetric':cv2.BORDER_REFLECT
                   }
-_cv2_interpolation_to_str= {'nearest':cv2.INTER_NEAREST,
-                         'bilinear':cv2.INTER_LINEAR,
-                         'area':cv2.INTER_AREA,
-                         'bicubic':cv2.INTER_CUBIC,
-                         'lanczos':cv2.INTER_LANCZOS4}
-_cv2_interpolation_from_str= {v:k for k,v in _cv2_interpolation_to_str.items()}
+
 
 def _is_pil_image(img):
     if accimage is not None:
@@ -36,11 +31,14 @@ def _is_pil_image(img):
     else:
         return isinstance(img, Image.Image)
 
+
 def _is_tensor_image(img):
     return torch.is_tensor(img) and img.ndimension() == 3
 
+
 def _is_numpy_image(img):
     return isinstance(img, np.ndarray) and (img.ndim in {2, 3})
+
 
 def to_tensor(pic):
     """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
@@ -61,6 +59,7 @@ def to_tensor(pic):
     else:
         return img
 
+
 def normalize(tensor, mean, std):
     """Normalize a tensor image with mean and standard deviation.
     .. note::
@@ -80,6 +79,7 @@ def normalize(tensor, mean, std):
     for t, m, s in zip(tensor, mean, std):
         t.sub_(m).div_(s)
     return tensor
+
 
 def resize(img, size, interpolation=cv2.INTER_CUBIC):
     r"""Resize the input numpy ndarray to the given size.
@@ -119,10 +119,12 @@ def resize(img, size, interpolation=cv2.INTER_CUBIC):
     else:
         return(output)
 
+
 def scale(*args, **kwargs):
     warnings.warn("The use of the transforms.Scale transform is deprecated, " +
                   "please use transforms.Resize instead.")
     return resize(*args, **kwargs)
+
 
 def pad(img, padding, fill=0, padding_mode='constant'):
     r"""Pad the given numpy ndarray on all sides with specified padding mode and fill value.
@@ -180,6 +182,7 @@ def pad(img, padding, fill=0, padding_mode='constant'):
         return(cv2.copyMakeBorder(img, top=pad_top, bottom=pad_bottom, left=pad_left, right=pad_right,
                                      borderType=_cv2_pad_to_str[padding_mode], value=fill))
 
+
 def crop(img, i, j, h, w):
     """Crop the given PIL Image.
     Args:
@@ -196,6 +199,7 @@ def crop(img, i, j, h, w):
 
     return img[i:i+h, j:j+w, :]
 
+
 def center_crop(img, output_size):
     if isinstance(output_size, numbers.Number):
         output_size = (int(output_size), int(output_size))
@@ -205,7 +209,8 @@ def center_crop(img, output_size):
     j = int(round((w - tw) / 2.))
     return crop(img, i, j, th, tw)
 
-def resized_crop(img, i, j, h, w, size, interpolation=cv2.INTER_CUBIC):
+
+def resized_crop(img, i, j, h, w, size, interpolation=cv2.INTER_LINEAR):
     """Crop the given numpy ndarray and resize it to desired size.
     Notably used in :class:`~torchvision.transforms.RandomResizedCrop`.
     Args:
@@ -225,6 +230,7 @@ def resized_crop(img, i, j, h, w, size, interpolation=cv2.INTER_CUBIC):
     img = resize(img, size, interpolation=interpolation)
     return img
 
+
 def hflip(img):
     """Horizontally flip the given numpy ndarray.
     Args:
@@ -239,6 +245,7 @@ def hflip(img):
         return cv2.flip(img,1)[:,:,np.newaxis]
     else:
         return cv2.flip(img, 1)
+
 
 def vflip(img):
     """Vertically flip the given numpy ndarray.
@@ -255,7 +262,6 @@ def vflip(img):
         return cv2.flip(img, 0)
     # img[::-1] is much faster, but doesn't work with torch.from_numpy()!
     
-
 
 def five_crop(img, size):
     """Crop the given numpy ndarray into four corners and the central crop.
@@ -509,6 +515,7 @@ def _get_affine_matrix(center, angle, translate, scale, shear):
     
     return matrix[:2,:]
 
+
 def affine(img, angle, translate, scale, shear, interpolation=cv2.INTER_CUBIC, mode=cv2.BORDER_CONSTANT, fillcolor=0):
     """Apply affine transformation on the image keeping image center invariant
     Args:
@@ -542,6 +549,7 @@ def affine(img, angle, translate, scale, shear, interpolation=cv2.INTER_CUBIC, m
         return cv2.warpAffine(img, matrix, output_size[::-1],interpolation, borderMode=mode, borderValue=fillcolor)[:,:,np.newaxis]
     else:
         return cv2.warpAffine(img, matrix, output_size[::-1],interpolation, borderMode=mode, borderValue=fillcolor)
+
 
 def to_grayscale(img, num_output_channels=1):
     """Convert image to grayscale version of image.
