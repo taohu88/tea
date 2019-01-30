@@ -3,6 +3,7 @@ from __future__ import division
 import os
 from functools import partial
 
+import torch
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
@@ -82,8 +83,8 @@ def main(cfg_file='../cfg/my-vgg.cfg',
 
     data = DataBunch(train_loader, test_loader, device=device)
     learn = Learner(data, model, loss_func=torch.nn.CrossEntropyLoss(),
-                    metrics=accuracy,
-                    callback_fns=[partial(EarlyStoppingCallback, monitor='accuracy', min_delta=0.01, patience=2)])
+                    metrics=accuracy)
+                  #  callback_fns=[partial(EarlyStoppingCallback, monitor='accuracy', min_delta=0.01, patience=2)])
 
     lr_find(learn)
     # learn.recorder.plot()
