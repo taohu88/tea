@@ -1,9 +1,10 @@
 from __future__ import division
 
-from models.yolo3 import Darknet
-from utils.utils import load_classes, non_max_suppression
+from yolo.yolo3 import Darknet
+from models.cfg_parser import load_classes
+from yolo.utils import non_max_suppression
 
-from dataset.datasets import *
+from dataset.img_dataset import *
 
 import os
 import time

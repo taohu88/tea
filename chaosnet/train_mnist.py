@@ -3,7 +3,7 @@ import torch
 from torchvision import datasets, transforms
 from models.builder import get_input_size
 from models.core import BasicModel
-from config_reader.parse_config import parse_model_config
+from models.cfg_parser import parse_model_config
 
 from fastai.script import call_parse
 from fastai.basic_data import DataBunch

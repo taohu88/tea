@@ -1,5 +1,14 @@
 
 
+def load_classes(path):
+    """
+    Loads class labels at 'path'
+    """
+    fp = open(path, "r")
+    names = fp.read().split("\n")[:-1]
+    return names
+
+
 def parse_model_config(path):
     """Parses the yolo-v3 layer configuration file and returns module definitions"""
     file = open(path, 'r')

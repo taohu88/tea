@@ -1,9 +1,9 @@
 from __future__ import division
 
-from models.yolo3 import Darknet
-from utils.utils import *
-from dataset.datasets import *
-from config_reader.parse_config import *
+from yolo.yolo3 import Darknet
+from yolo.utils import *
+from dataset.img_dataset import *
+from models.cfg_parser import *
 
 import argparse
 import tqdm

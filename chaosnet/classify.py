@@ -1,29 +1,31 @@
 from __future__ import division
 
-import argparse
+import os
 from functools import partial
 
 from torch.utils.data import DataLoader
+from torchvision import transforms
 
-from dataset.tiny_image_set import TinyImageSet
 from models.builder import get_input_size
 from models.core import BasicModel
-from utils.utils import *
-from dataset.datasets import *
-from config_reader.parse_config import *
+from yolo.utils import *
+from dataset.tiny_imageset import TinyImageSet
+from models.cfg_parser import parse_data_config, parse_model_config
 
 
 from fastai.script import call_parse
 from fastai.basic_data import DataBunch
 from fastai.basic_train import Learner
-from fastai.train import fit_one_cycle, lr_find
+from fastai.train import lr_find
 from fastai.vision import accuracy
 from fastai.callbacks.tracker import EarlyStoppingCallback
+
+import matplotlib.pyplot as plt
 
 
 @call_parse
 def main(cfg_file='../cfg/my-vgg.cfg',
-         cfg_data='../cfg/tinyimage.dataset',
+         cfg_data='../cfg/tinyimage.data',
          batch_size=256, num_worker=4, cuda=True):
     os.makedirs('output', exist_ok=True)
 
@@ -70,7 +72,6 @@ def main(cfg_file='../cfg/my-vgg.cfg',
     data_config = parse_data_config(cfg_data)
     train_path = data_config["train"]
     valid_path = data_config["valid"]
-    num_classes = int(data_config["classes"])
 
     training_set = TinyImageSet(train_path, 'train', transform=training_transform, in_memory=in_memory)
     valid_set = TinyImageSet(valid_path, 'val', transform=valid_transform, in_memory=in_memory)
