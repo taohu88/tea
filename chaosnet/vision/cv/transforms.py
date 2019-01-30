@@ -19,11 +19,11 @@ import types
 import collections
 import warnings
 
+import torchvision
 from vision.cv import functional as F
 import cv2
-# from . import functional as F
 
-__all__ = ["Compose", "ToTensor", "Normalize", "Resize", "Scale", "CenterCrop", "Pad",
+__all__ = ["Compose", "NpToTensor", "BGRToRGB", "ToTensor", "Normalize", "Resize", "Scale", "CenterCrop", "Pad",
            "Lambda", "RandomApply", "RandomChoice", "RandomOrder", "RandomCrop", "RandomHorizontalFlip",
            "RandomVerticalFlip", "RandomResizedCrop", "RandomSizedCrop", "FiveCrop", "TenCrop", "LinearTransformation",
            "ColorJitter", "RandomRotation", "RandomAffine", "Grayscale", "RandomGrayscale"]
@@ -39,6 +39,7 @@ _cv2_interpolation_to_str= {'nearest':cv2.INTER_NEAREST,
                          'bicubic':cv2.INTER_CUBIC,
                          'lanczos':cv2.INTER_LANCZOS4}
 _cv2_interpolation_from_str= {v:k for k,v in _cv2_interpolation_to_str.items()}
+
 
 class Compose(object):
     """Composes several transforms together.
@@ -68,23 +69,49 @@ class Compose(object):
         return format_string
 
 
-class ToTensor(object):
-    """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
-    Converts a PIL Image or numpy.ndarray (H x W x C) in the range
-    [0, 255] to a torch.FloatTensor of shape (C x H x W) in the range [0.0, 1.0].
+ToTensor = torchvision.transforms.ToTensor
+
+
+class NpToTensor(object):
+    """Convert a ``numpy.ndarray`` to tensor.
+
+    Converts a numpy.ndarray (H x W x C) in the range
+    [0, 255] to a torch.FloatTensor of shape (C x H x W) in the range [0.0, 1.0]
     """
 
     def __call__(self, pic):
         """
         Args:
             pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+
         Returns:
             Tensor: Converted image.
         """
-        return F.to_tensor(pic)
+        return F.np_2_tensor(pic)
 
     def __repr__(self):
         return self.__class__.__name__ + '()'
+
+
+class BGRToRGB(object):
+    """Convert a ``numpy.ndarray`` to tensor.
+
+    Converts a bgr image to rgb image
+    """
+
+    def __call__(self, pic):
+        """
+        Args:
+            pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+
+        Returns:
+            Tensor: Converted image.
+        """
+        return F.bgr_2_rgb(pic)
+
+    def __repr__(self):
+        return self.__class__.__name__ + '()'
+
 
 class Normalize(object):
     """Normalize a tensor image with mean and standard deviation.

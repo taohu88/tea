@@ -6,14 +6,13 @@ References:
 
 import torch
 import math
-from PIL import Image, ImageOps, ImageEnhance, PILLOW_VERSION
+from PIL import Image, ImageEnhance
 try:
     import accimage
 except ImportError:
     accimage = None
 import numpy as np
 import numbers
-import types
 import collections
 import warnings
 import cv2
@@ -25,13 +24,6 @@ _cv2_pad_to_str = {'constant':cv2.BORDER_CONSTANT,
                   }
 
 
-def _is_pil_image(img):
-    if accimage is not None:
-        return isinstance(img, (Image.Image, accimage.Image))
-    else:
-        return isinstance(img, Image.Image)
-
-
 def _is_tensor_image(img):
     return torch.is_tensor(img) and img.ndimension() == 3
 
@@ -40,11 +32,17 @@ def _is_numpy_image(img):
     return isinstance(img, np.ndarray) and (img.ndim in {2, 3})
 
 
-def to_tensor(pic):
-    """Convert a ``PIL Image`` or ``numpy.ndarray`` to tensor.
+def bgr_2_rgb(pic):
+    if not (_is_numpy_image(pic)):
+        raise TypeError('pic should be ndarray. Got {}'.format(type(pic)))
+    return cv2.cvtColor(pic, cv2.COLOR_BGR2RGB)
+
+
+def np_2_tensor(pic):
+    """Convert a ``numpy.ndarray`` to tensor.
     See ``ToTensor`` for more details.
     Args:
-        pic (PIL Image or numpy.ndarray): Image to be converted to tensor.
+        pic (numpy.ndarray): Image to be converted to tensor.
     Returns:
         Tensor: Converted image.
     """

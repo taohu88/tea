@@ -1,11 +1,12 @@
 from functools import partial
 import torch
-from torchvision import datasets, transforms
+from torchvision import datasets
 
 from models.builder import get_input_size
 from models.core import BasicModel
 from models.cfg_parser import parse_model_config
 from engine.core import find_min_lr
+from vision.cv import transforms
 
 from fastai.script import call_parse
 from fastai.basic_data import DataBunch
@@ -31,7 +32,7 @@ def main(cfg_file='../cfg/lecnn.cfg', batch_size=256, cuda=True):
     model = BasicModel(module_defs, input_sz)
     model = model.to(device)
 
-    kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
+    kwargs = {'num_workers': 2, 'pin_memory': False} if use_cuda else {}
     train_loader = torch.utils.data.DataLoader(
         datasets.MNIST('../dataset', train=True, download=True,
                        transform=transforms.Compose([
@@ -41,9 +42,10 @@ def main(cfg_file='../cfg/lecnn.cfg', batch_size=256, cuda=True):
         batch_size=batch_size, shuffle=True, **kwargs)
 
     test_loader = torch.utils.data.DataLoader(
-        datasets.MNIST('../dataset', train=False, transform=transforms.Compose([
-                           transforms.ToTensor(),
-                           transforms.Normalize((0.1307,), (0.3081,))
+        datasets.MNIST('../dataset', train=False,
+                       transform=transforms.Compose([
+                            transforms.ToTensor(),
+                            transforms.Normalize((0.1307,), (0.3081,))
                        ])),
         batch_size=batch_size, shuffle=True, **kwargs)
 
@@ -58,5 +60,5 @@ def main(cfg_file='../cfg/lecnn.cfg', batch_size=256, cuda=True):
     min_lr = find_min_lr(learn.recorder.lrs, learn.recorder.losses)
     lr = min_lr/10.0
     print(f'Minimal lr rate is {min_lr} propose init lr {lr}')
-    fit_one_cycle(learn, 20, lr)
+    fit_one_cycle(learn, 10, lr)
 
