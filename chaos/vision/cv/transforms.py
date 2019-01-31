@@ -20,10 +20,10 @@ import collections
 import warnings
 
 import torchvision
-from vision.cv import functional as F
+from . import functional as F
 import cv2
 
-__all__ = ["Compose", "HWCToTensor", "TensorToHWC", "BGRToRGB", "ToTensor", "Normalize", "Resize", "Scale",
+__all__ = ["Compose", "NumpyToTensor", "TensorToNumpy", "BGRToRGB", "ToTensor", "Normalize", "Resize", "Scale",
            "CenterCrop", "Pad", "Lambda",
            "RandomApply", "RandomChoice", "RandomOrder", "RandomCrop", "RandomHorizontalFlip",
            "RandomVerticalFlip", "RandomResizedCrop", "RandomSizedCrop", "FiveCrop", "TenCrop", "LinearTransformation",
@@ -73,7 +73,7 @@ class Compose(object):
 ToTensor = torchvision.transforms.ToTensor
 
 
-class HWCToTensor(object):
+class NumpyToTensor(object):
     """Convert a ``numpy.ndarray`` to tensor.
 
     Converts a numpy.ndarray (H x W x C) in the range
@@ -94,7 +94,7 @@ class HWCToTensor(object):
         return self.__class__.__name__ + '()'
 
 
-class TensorToHWC(object):
+class TensorToNumpy(object):
     """Convert a tensor to ``numpy.ndarray``
 
     Converts a tensor (C x H x W)[0.0, 1.0] to a numpy.ndarray (H x W x C) in the range
@@ -109,7 +109,7 @@ class TensorToHWC(object):
         Returns:
             np.ndarray: numpy array
         """
-        return F.tensor_2_hwc(pic)
+        return F.tensor_2_numpy(pic)
 
     def __repr__(self):
         return self.__class__.__name__ + '()'
@@ -413,7 +413,7 @@ class RandomCrop(object):
         Returns:
             tuple: params (i, j, h, w) to be passed to ``crop`` for random crop.
         """
-        h,w = img.shape[0:2]
+        h, w = img.shape[0:2]
         th, tw = output_size
         if w == tw and h == th:
             return 0, 0, h, w

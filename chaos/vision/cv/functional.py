@@ -39,7 +39,17 @@ def bgr_2_rgb(pic):
     return cv2.cvtColor(pic, cv2.COLOR_BGR2RGB)
 
 
-def hwc_2_tensor(pic):
+def _is_grey_numpy_image(pic):
+    if not (_is_numpy_image(pic)):
+        raise TypeError('pic should be ndarray. Got {}'.format(type(pic)))
+
+    if pic.ndim == 2:
+        return True;
+
+    return pic.shape[2] == 1
+
+
+def numpy_2_tensor(pic):
     """Convert a ``numpy.ndarray`` (HWC) to tensor (CHW).
     See ``ToTensor`` for more details.
     Args:
@@ -59,7 +69,7 @@ def hwc_2_tensor(pic):
         return img
 
 
-def tensor_2_hwc(pic):
+def tensor_2_numpy(pic):
     """Convert a tensor (CHW) to ``numpy.ndarray`` (HWC)
     See ``ToTensor`` for more details.
     Args:
@@ -81,7 +91,6 @@ def tensor_2_hwc(pic):
     if isinstance(pic, torch.FloatTensor):
         pic = pic.mul(255).byte()
 
-    # copy a copy of numpy to avoid
     return np.transpose(pic.numpy(), (1, 2, 0))
 
 
@@ -106,7 +115,7 @@ def normalize(tensor, mean, std):
     return tensor
 
 
-def resize(img, size, interpolation=cv2.INTER_CUBIC):
+def resize(img, size, interpolation=cv2.INTER_LINEAR):
     r"""Resize the input numpy ndarray to the given size.
     Args:
         img (numpy ndarray): Image to be resized.
@@ -116,17 +125,17 @@ def resize(img, size, interpolation=cv2.INTER_CUBIC):
             the aspect ratio. i.e, if height > width, then image will be rescaled to
             :math:`\left(\text{size} \times \frac{\text{height}}{\text{width}}, \text{size}\right)`
         interpolation (int, optional): Desired interpolation. Default is
-            ``cv2.INTER_CUBIC``
+            ``cv2.INTER_LINEAR``
     Returns:
-        PIL Image: Resized image.
+        numpy image: Resized image.
     """
     if not _is_numpy_image(img):
         raise TypeError('img should be numpy image. Got {}'.format(type(img)))
     if not (isinstance(size, int) or (isinstance(size, collections.Iterable) and len(size) == 2)):
         raise TypeError('Got inappropriate size arg: {}'.format(size))
-    w, h, =  size
 
     if isinstance(size, int):
+        h, w = img.shape[:2]
         if (w <= h and w == size) or (h <= w and h == size):
             return img
         if w < h:
@@ -138,8 +147,9 @@ def resize(img, size, interpolation=cv2.INTER_CUBIC):
             ow = int(size * w / h)
             output = cv2.resize(img, dsize=(ow, oh), interpolation=interpolation)
     else:
-        output = cv2.resize(img, dsize=size[::-1], interpolation=interpolation)
-    if img.shape[2]==1:
+        output = cv2.resize(img, dsize=(size[1], size[0]), interpolation=interpolation)
+
+    if _is_grey_numpy_image(img):
         return(output[:,:,np.newaxis])
     else:
         return(output)
@@ -200,7 +210,8 @@ def pad(img, padding, fill=0, padding_mode='constant'):
         pad_top = padding[1]
         pad_right = padding[2]
         pad_bottom = padding[3]
-    if img.shape[2]==1:
+
+    if _is_grey_numpy_image(img):
         return(cv2.copyMakeBorder(img, top=pad_top, bottom=pad_bottom, left=pad_left, right=pad_right,
                                  borderType=_cv2_pad_to_str[padding_mode], value=fill)[:,:,np.newaxis])
     else:
@@ -266,8 +277,8 @@ def hflip(img):
     if not _is_numpy_image(img):
         raise TypeError('img should be numpy image. Got {}'.format(type(img)))
     # img[:,::-1] is much faster, but doesn't work with torch.from_numpy()!
-    if img.shape[2]==1:
-        return cv2.flip(img,1)[:,:,np.newaxis]
+    if _is_grey_numpy_image(img):
+        return cv2.flip(img, 1)[:,:,np.newaxis]
     else:
         return cv2.flip(img, 1)
 
@@ -281,7 +292,7 @@ def vflip(img):
     """
     if not _is_numpy_image(img):
         raise TypeError('img should be numpy Image. Got {}'.format(type(img)))
-    if img.shape[2]==1:
+    if _is_grey_numpy_image(img):
         return cv2.flip(img, 0)[:,:,np.newaxis]
     else:
         return cv2.flip(img, 0)
@@ -306,15 +317,15 @@ def five_crop(img, size):
     else:
         assert len(size) == 2, "Please provide only two dimensions (h, w) for size."
 
-    w, h = img.shape[0:2]
+    h, w = img.shape[0:2]
     crop_h, crop_w = size
     if crop_w > w or crop_h > h:
         raise ValueError("Requested crop size {} is bigger than input size {}".format(size,
                                                                                       (h, w)))
     tl = crop(img, 0, 0, crop_h, crop_w)
-    tr = crop(img, w - crop_w, 0, crop_h, w)
-    bl = crop(img, 0, h - crop_h, crop_w, h)
-    br = crop(img, w - crop_w, h - crop_h,  h,w)
+    tr = crop(img, 0, w - crop_w, crop_h, w)
+    bl = crop(img, h - crop_h, 0, h, crop_w)
+    br = crop(img, h - crop_h, w - crop_w, h, w)
     center = center_crop(img, (crop_h, crop_w))
     return (tl, tr, bl, br, center)
 
@@ -366,7 +377,7 @@ def adjust_brightness(img, brightness_factor):
     table = np.array([ i*brightness_factor for i in range (0,256)]).clip(0,255).astype('uint8')
     # same thing but a bit slower
     # cv2.convertScaleAbs(img, alpha=brightness_factor, beta=0)
-    if img.shape[2]==1:
+    if _is_grey_numpy_image(img):
         return cv2.LUT(img, table)[:,:,np.newaxis]
     else:
         return cv2.LUT(img, table)
@@ -389,7 +400,7 @@ def adjust_contrast(img, contrast_factor):
     table = np.array([ (i-74)*contrast_factor+74 for i in range (0,256)]).clip(0,255).astype('uint8')
     # enhancer = ImageEnhance.Contrast(img)
     # img = enhancer.enhance(contrast_factor)
-    if img.shape[2]==1:
+    if _is_grey_numpy_image(img):
         return cv2.LUT(img, table)[:,:,np.newaxis]
     else:
         return cv2.LUT(img,table)
@@ -482,7 +493,7 @@ def adjust_gamma(img, gamma, gain=1):
     # https://stackoverflow.com/questions/33322488/how-to-change-image-illumination-in-opencv-python/41061351
     table = np.array([((i / 255.0) ** gamma) * 255 * gain 
                       for i in np.arange(0, 256)]).astype('uint8')
-    if img.shape[2]==1:
+    if _is_grey_numpy_image(img):
         return cv2.LUT(img, table)[:,:,np.newaxis]
     else:
         return cv2.LUT(img,table)
@@ -511,7 +522,7 @@ def rotate(img, angle, resample=False, expand=False, center=None):
     if center is None:
         center = (cols/2, rows/2)
     M = cv2.getRotationMatrix2D(center,angle,1)
-    if img.shape[2]==1:
+    if _is_grey_numpy_image(img):
         return cv2.warpAffine(img,M,(cols,rows))[:,:,np.newaxis]
     else:
         return cv2.warpAffine(img,M,(cols,rows))
@@ -570,7 +581,7 @@ def affine(img, angle, translate, scale, shear, interpolation=cv2.INTER_CUBIC, m
     center = (img.shape[1] * 0.5 + 0.5, img.shape[0] * 0.5 + 0.5)
     matrix = _get_affine_matrix(center, angle, translate, scale, shear)
     
-    if img.shape[2]==1:
+    if _is_grey_numpy_image(img):
         return cv2.warpAffine(img, matrix, output_size[::-1],interpolation, borderMode=mode, borderValue=fillcolor)[:,:,np.newaxis]
     else:
         return cv2.warpAffine(img, matrix, output_size[::-1],interpolation, borderMode=mode, borderValue=fillcolor)
