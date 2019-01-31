@@ -23,8 +23,9 @@ import torchvision
 from vision.cv import functional as F
 import cv2
 
-__all__ = ["Compose", "NpToTensor", "BGRToRGB", "ToTensor", "Normalize", "Resize", "Scale", "CenterCrop", "Pad",
-           "Lambda", "RandomApply", "RandomChoice", "RandomOrder", "RandomCrop", "RandomHorizontalFlip",
+__all__ = ["Compose", "HWCToTensor", "TensorToHWC", "BGRToRGB", "ToTensor", "Normalize", "Resize", "Scale",
+           "CenterCrop", "Pad", "Lambda",
+           "RandomApply", "RandomChoice", "RandomOrder", "RandomCrop", "RandomHorizontalFlip",
            "RandomVerticalFlip", "RandomResizedCrop", "RandomSizedCrop", "FiveCrop", "TenCrop", "LinearTransformation",
            "ColorJitter", "RandomRotation", "RandomAffine", "Grayscale", "RandomGrayscale"]
 
@@ -72,7 +73,7 @@ class Compose(object):
 ToTensor = torchvision.transforms.ToTensor
 
 
-class NpToTensor(object):
+class HWCToTensor(object):
     """Convert a ``numpy.ndarray`` to tensor.
 
     Converts a numpy.ndarray (H x W x C) in the range
@@ -88,6 +89,27 @@ class NpToTensor(object):
             Tensor: Converted image.
         """
         return F.np_2_tensor(pic)
+
+    def __repr__(self):
+        return self.__class__.__name__ + '()'
+
+
+class TensorToHWC(object):
+    """Convert a tensor to ``numpy.ndarray``
+
+    Converts a tensor (C x H x W)[0.0, 1.0] to a numpy.ndarray (H x W x C) in the range
+    [0, 255]
+    """
+
+    def __call__(self, pic):
+        """Convert a tensor (CHW) to ``numpy.ndarray`` (HWC)
+        See ``ToTensor`` for more details.
+        Args:
+            pic (tensor): tensor to be converted
+        Returns:
+            np.ndarray: numpy array
+        """
+        return F.tensor_2_hwc(pic)
 
     def __repr__(self):
         return self.__class__.__name__ + '()'

@@ -38,8 +38,8 @@ def bgr_2_rgb(pic):
     return cv2.cvtColor(pic, cv2.COLOR_BGR2RGB)
 
 
-def np_2_tensor(pic):
-    """Convert a ``numpy.ndarray`` to tensor.
+def hwc_2_tensor(pic):
+    """Convert a ``numpy.ndarray`` (HWC) to tensor (CHW).
     See ``ToTensor`` for more details.
     Args:
         pic (numpy.ndarray): Image to be converted to tensor.
@@ -56,6 +56,32 @@ def np_2_tensor(pic):
         return img.float().div(255)
     else:
         return img
+
+
+def tensor_2_hwc(pic):
+    """Convert a tensor (CHW) to ``numpy.ndarray`` (HWC)
+    See ``ToTensor`` for more details.
+    Args:
+        pic (tensor): tensor to be converted
+    Returns:
+        np.ndarray: numpy array
+    """
+    if not(isinstance(pic, torch.Tensor)):
+        raise TypeError('pic should be Tensor or ndarray. Got {}.'.format(type(pic)))
+
+    elif isinstance(pic, torch.Tensor):
+        if pic.ndimension() not in {2, 3}:
+            raise ValueError('pic should be 2/3 dimensional. Got {} dimensions.'.format(pic.ndimension()))
+
+        elif pic.ndimension() == 2:
+            # if 2D image, add channel dimension (CHW)
+            pic.unsqueeze_(0)
+
+    if isinstance(pic, torch.FloatTensor):
+        pic = pic.mul(255).byte()
+
+    # copy a copy of numpy to avoid
+    return np.array((np.transpose(pic.numpy(), (1, 2, 0))))
 
 
 def normalize(tensor, mean, std):
@@ -201,7 +227,7 @@ def crop(img, i, j, h, w):
 def center_crop(img, output_size):
     if isinstance(output_size, numbers.Number):
         output_size = (int(output_size), int(output_size))
-    w, h = img.shape[0:2]
+    h,  w = img.shape[0:2]
     th, tw = output_size
     i = int(round((h - th) / 2.))
     j = int(round((w - tw) / 2.))
