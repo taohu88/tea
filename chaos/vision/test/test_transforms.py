@@ -20,9 +20,10 @@ class Tester(unittest.TestCase):
         result = transforms.Compose([
             transforms.TensorToHWC(),
             transforms.CenterCrop((oheight, owidth)),
-#            transforms.ToTensor(),
+            transforms.ToTensor(),
         ])(img)
-        print('CCC', height, width, oheight, owidth, type(result), result.shape, result[oh1:oh1 + oheight, ow1:ow1 + owidth, :])
+        print(result.shape)
+        assert((oheight == result.size()[1]) and (owidth == result.size()[2]))
         assert result.sum() == 0, "height: " + str(height) + " width: " \
                                   + str(width) + " oheight: " + str(oheight) + " owidth: " + str(owidth)
         oheight += 1
@@ -33,6 +34,8 @@ class Tester(unittest.TestCase):
             transforms.ToTensor(),
         ])(img)
         sum1 = result.sum()
+        # top left is 1.0 now
+        assert(result[0,0,0] >= 1.0)
         assert sum1 > 1, "height: " + str(height) + " width: " \
                          + str(width) + " oheight: " + str(oheight) + " owidth: " + str(owidth)
         oheight += 1
@@ -42,6 +45,8 @@ class Tester(unittest.TestCase):
             transforms.CenterCrop((oheight, owidth)),
             transforms.ToTensor(),
         ])(img)
+        # bottom right is 1.0 now.
+        assert(result[0,oheight-1, owidth-1] >= 1.0)
         sum2 = result.sum()
         assert sum2 > 0, "height: " + str(height) + " width: " \
                          + str(width) + " oheight: " + str(oheight) + " owidth: " + str(owidth)

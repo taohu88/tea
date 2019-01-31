@@ -1,5 +1,6 @@
 """
 Author: Jim Bohnslav jbohnslav
+Modifier: 2019 Tao Hu
 References:
     - https://github.com/jbohnslav/opencv_transforms
 """
@@ -81,7 +82,7 @@ def tensor_2_hwc(pic):
         pic = pic.mul(255).byte()
 
     # copy a copy of numpy to avoid
-    return np.array((np.transpose(pic.numpy(), (1, 2, 0))))
+    return np.transpose(pic.numpy(), (1, 2, 0))
 
 
 def normalize(tensor, mean, std):
