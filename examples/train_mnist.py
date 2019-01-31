@@ -2,11 +2,11 @@ from functools import partial
 import torch
 from torchvision import datasets
 
-from models.builder import get_input_size
-from models.core import BasicModel
-from models.cfg_parser import parse_model_config
-from engine.core import find_min_lr
-from vision.cv import transforms
+from chaos.models.builder import get_input_size
+from chaos.models.core import BasicModel
+from chaos.models.cfg_parser import parse_model_config
+from chaos.engine.core import find_min_lr
+from chaos.vision.cv import transforms
 
 from fastai.script import call_parse
 from fastai.basic_data import DataBunch
@@ -34,7 +34,7 @@ def main(cfg_file='../cfg/lecnn.cfg', batch_size=256, cuda=True):
 
     kwargs = {'num_workers': 2, 'pin_memory': False} if use_cuda else {}
     train_loader = torch.utils.data.DataLoader(
-        datasets.MNIST('../dataset', train=True, download=True,
+        datasets.MNIST('../../dataset', train=True, download=True,
                        transform=transforms.Compose([
                            transforms.ToTensor(),
                            transforms.Normalize((0.1307,), (0.3081,))
@@ -42,7 +42,7 @@ def main(cfg_file='../cfg/lecnn.cfg', batch_size=256, cuda=True):
         batch_size=batch_size, shuffle=True, **kwargs)
 
     test_loader = torch.utils.data.DataLoader(
-        datasets.MNIST('../dataset', train=False,
+        datasets.MNIST('../../dataset', train=False,
                        transform=transforms.Compose([
                             transforms.ToTensor(),
                             transforms.Normalize((0.1307,), (0.3081,))

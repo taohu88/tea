@@ -2,8 +2,8 @@ from __future__ import division
 
 import torch.nn as nn
 
-from models.builder import create_module_list
-from modules.core import SumLayer, ConcatLayer
+from .builder import create_module_list
+from ..modules.core import SumLayer, ConcatLayer
 
 
 class BasicModel(nn.Module):
