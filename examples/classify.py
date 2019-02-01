@@ -7,11 +7,11 @@ import torch
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
-from chaos.models.builder import get_input_size
-from chaos.models.core import BasicModel
-from chaos.dataset.tiny_imageset import TinyImageSet
-from chaos.models.cfg_parser import parse_data_config, parse_model_config
-from chaos.trainer.core import find_min_lr
+from tea.models.builder import get_input_size
+from tea.models.core import BasicModel
+from tea.dataset.tiny_imageset import TinyImageSet
+from tea.models.cfg_parser import parse_data_config, parse_model_config
+from tea.trainer.core import find_min_lr
 
 
 from fastai.script import call_parse

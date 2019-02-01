@@ -1,5 +1,5 @@
 import torch
-import chaos.vision.cv.transforms as transforms
+import tea.vision.cv.transforms as transforms
 import numpy as np
 from PIL import Image
 import unittest

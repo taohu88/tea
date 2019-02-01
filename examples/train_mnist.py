@@ -2,11 +2,11 @@ from functools import partial
 import torch
 from torchvision import datasets
 
-from chaos.models.builder import get_input_size
-from chaos.models.core import BasicModel
-from chaos.models.cfg_parser import parse_model_config
-from chaos.trainer.core import find_min_lr
-from chaos.vision.cv import transforms
+from tea.models.builder import get_input_size
+from tea.models.core import BasicModel
+from tea.models.cfg_parser import parse_model_config
+from tea.trainer.core import find_min_lr
+from tea.vision.cv import transforms
 
 from fastai.script import call_parse
 from fastai.basic_data import DataBunch
@@ -14,8 +14,8 @@ from fastai.basic_train import Learner
 from fastai.train import fit_one_cycle, lr_find
 from fastai.vision import accuracy
 from fastai.callbacks.tracker import EarlyStoppingCallback
-from chaos.core.hyper_params import HyperParams
-from chaos.trainer.classifier import Classifier
+from tea.core.hyper_params import HyperParams
+from tea.trainer.classifier import Classifier
 
 
 @call_parse
