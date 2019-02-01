@@ -5,7 +5,7 @@ from torchvision import datasets
 from chaos.models.builder import get_input_size
 from chaos.models.core import BasicModel
 from chaos.models.cfg_parser import parse_model_config
-from chaos.engine.core import find_min_lr
+from chaos.trainer.core import find_min_lr
 from chaos.vision.cv import transforms
 
 from fastai.script import call_parse
@@ -14,8 +14,8 @@ from fastai.basic_train import Learner
 from fastai.train import fit_one_cycle, lr_find
 from fastai.vision import accuracy
 from fastai.callbacks.tracker import EarlyStoppingCallback
-
-import matplotlib.pyplot as plt
+from chaos.core.hyper_params import HyperParams
+from chaos.trainer.classifier import Classifier
 
 
 @call_parse
@@ -30,9 +30,9 @@ def main(cfg_file='../cfg/lecnn.cfg', batch_size=256, cuda=True):
 
     # Set up model
     model = BasicModel(module_defs, input_sz)
-    model = model.to(device)
+    # model = model.to(device)
 
-    kwargs = {'num_workers': 2, 'pin_memory': False} if use_cuda else {}
+    kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
     train_loader = torch.utils.data.DataLoader(
         datasets.MNIST('../../dataset', train=True, download=True,
                        transform=transforms.Compose([
@@ -49,16 +49,21 @@ def main(cfg_file='../cfg/lecnn.cfg', batch_size=256, cuda=True):
                        ])),
         batch_size=batch_size, shuffle=True, **kwargs)
 
-    data = DataBunch(train_loader, test_loader, device=device)
-    learn = Learner(data, model, loss_func=torch.nn.CrossEntropyLoss(),
-                    metrics=accuracy,
-                    callback_fns=[partial(EarlyStoppingCallback, monitor='accuracy', min_delta=0.01, patience=2)])
+    hypers = HyperParams(lr=0.01, batch_sz=256)
 
-    lr_find(learn)
-    # learn.recorder.plot()
-    # plt.show()
-    min_lr = find_min_lr(learn.recorder.lrs, learn.recorder.losses)
-    lr = min_lr/10.0
-    print(f'Minimal lr rate is {min_lr} propose init lr {lr}')
-    fit_one_cycle(learn, 10, lr)
+    classifier = Classifier(model, train_loader, test_loader, hypers)
+    classifier.fit(10)
+
+    # data = DataBunch(train_loader, test_loader, device=device)
+    # learn = Learner(data, model, loss_func=torch.nn.CrossEntropyLoss(),
+    #                 metrics=accuracy,
+    #                 callback_fns=[partial(EarlyStoppingCallback, monitor='accuracy', min_delta=0.01, patience=2)])
+    #
+    # lr_find(learn)
+    # # learn.recorder.plot()
+    # # plt.show()
+    # min_lr = find_min_lr(learn.recorder.lrs, learn.recorder.losses)
+    # lr = min_lr/10.0
+    # print(f'Minimal lr rate is {min_lr} propose init lr {lr}')
+    # fit_one_cycle(learn, 10, lr)
 
