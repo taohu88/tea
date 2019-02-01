@@ -49,7 +49,7 @@ def main(cfg_file='../cfg/lecnn.cfg', batch_size=256, cuda=True):
                        ])),
         batch_size=batch_size, shuffle=True, **kwargs)
 
-    hypers = HyperParams(lr=0.01, batch_sz=256)
+    hypers = HyperParams(lr=0.01, batch_sz=256, log_freq=10)
 
     classifier = Classifier(model, train_loader, test_loader, hypers)
     classifier.fit(10)
