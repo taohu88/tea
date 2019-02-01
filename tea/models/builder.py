@@ -46,7 +46,7 @@ def make_activation(module_def):
     elif act_name == "linear":
         act = None
     else:
-        raise Exception(f"Unknown {activation} in {module_def}")
+        raise Exception(f"Unknown {act_name} in {module_def}")
     return act
 
 

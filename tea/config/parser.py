@@ -1,4 +1,4 @@
-
+# TODO rewrite it, it is too yolo specific
 
 def load_classes(path):
     """
@@ -10,7 +10,6 @@ def load_classes(path):
 
 
 def parse_model_config(path):
-    """Parses the yolo-v3 layer configuration file and returns module definitions"""
     file = open(path, 'r')
     lines = file.read().split('\n')
     lines = [x for x in lines if x and not x.startswith('#')]
@@ -29,7 +28,7 @@ def parse_model_config(path):
 
 
 def parse_data_config(path):
-    """Parses the dataset configuration file"""
+    """Parses the data configuration file"""
     options = dict()
     options['gpus'] = '0,1,2,3'
     options['num_workers'] = '10'

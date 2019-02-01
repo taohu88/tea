@@ -2,8 +2,19 @@ from __future__ import division
 
 import torch.nn as nn
 
-from .builder import create_module_list
+from .builder import create_module_list, get_input_size
 from ..modules.core import SumLayer, ConcatLayer
+from ..config.parser import parse_model_config
+
+
+def build_model(cfg):
+    # TODO don't parse model config
+    model_cfg = cfg.get('model', 'cfg')
+    module_defs = parse_model_config(model_cfg)
+    hyperparams = module_defs.pop(0)
+    input_sz = get_input_size(hyperparams)
+
+    return BasicModel(module_defs, input_sz)
 
 
 class BasicModel(nn.Module):

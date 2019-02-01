@@ -1,6 +1,6 @@
 #
 #   Core Module
-#   Copyright Tao Hu
+#   Author: Tao Hu 2019
 #
 
 import logging
@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 
 
 class SmartLinear(nn.Linear):
-    r"""Applies a linear transformation to the incoming dataset: :math:`y = xA^T + b`
+    r"""Applies a linear transformation to the incoming data: :math:`y = xA^T + b`
         It only automatically set input as (Batch, all-dimension)
     """
     def __init__(self, in_features, out_features, bias=True):

@@ -1,32 +1,29 @@
-
 from torch.optim import SGD
-import torch
-import torch.nn.functional as F
 from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
-from ignite.metrics import Accuracy, Loss, RunningAverage
-from tea.core.hyper_params import HyperParams
+from ignite.metrics import Accuracy, Loss
 
 from tqdm import tqdm
+from tea.config.helper import get_device, get_loss_fn, get_lr, get_momentum, get_log_freq
 
 
 class Classifier():
     """
     This is a common classifer
     """
-    def __init__(self, model, train_dl, valid_dl, hyper_params):
+    def __init__(self, cfg, model, train_dl, valid_dl):
+        self.cfg = cfg
         self.model = model
         self.train_dl = train_dl
         self.valid_dl = valid_dl
-        self.hyper_params = hyper_params
+
 
     def _create_trainer_evaluator(self):
-        lr = self.hyper_params.get_lr()
-        momentum = self.hyper_params.get_momentum()
-        device = HyperParams.get_device(self.hyper_params.uses_gpu())
-        loss_fn = HyperParams.get_loss_fn(self.hyper_params.get_loss_name())
+        lr = get_lr(self.cfg)
+        momentum = get_momentum(self.cfg)
+        device = get_device(self.cfg)
+        loss_fn = get_loss_fn(self.cfg)
         model = self.model
-
-        self._log_freq = self.hyper_params.get_log_freq()
+        self._log_freq = get_log_freq(self.cfg)
 
         optimizer = SGD(self.model.parameters(), lr=lr, momentum=momentum)
         trainer = create_supervised_trainer(model, optimizer, loss_fn, device=device)

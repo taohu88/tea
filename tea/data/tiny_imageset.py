@@ -2,7 +2,7 @@
 Author: Meng Lee, mnicnc404
 Date: 2018/06/04
 References:
-    - https://stanford.edu/~shervine/blog/pytorch-how-to-generate-dataset-parallel.html
+    - https://stanford.edu/~shervine/blog/pytorch-how-to-generate-data-parallel.html
 """
 
 import os
@@ -17,14 +17,14 @@ VAL_ANNOTATION_FILE = 'val_annotations.txt'
 
 
 class TinyImageSet(Dataset):
-    """Tiny ImageNet dataset set available from `http://cs231n.stanford.edu/tiny-imagenet-200.zip`.
+    """Tiny ImageNet data set available from `http://cs231n.stanford.edu/tiny-imagenet-200.zip`.
 
     Parameters
     ----------
     root: string
         Root directory including `train`, `test` and `val` subdirectories.
     split: string
-        Indicating which split to return as a dataset set.
+        Indicating which split to return as a data set.
         Valid option: [`train`, `test`, `val`]
     transform: torchvision.transforms
         A (series) of valid transformation(s).
@@ -97,15 +97,15 @@ class TinyImageSet(Dataset):
 
 
 if __name__ == '__main__':
-    # tiny_train = TinyImageNet('./dataset', split='train')
+    # tiny_train = TinyImageNet('./data', split='train')
     # print(len(tiny_train))
     # print(tiny_train.__getitem__(99999))
     # for fname, number in tiny_train.labels.items():
     #     if number == 192:
     #         print(fname, number)
 
-    # tiny_train = TinyImageNet('./dataset', split='val')
+    # tiny_train = TinyImageNet('./data', split='val')
     # print(tiny_train.__getitem__(99))
 
     # in-memory test
-    tiny_val = TinyImageSet('dataset', split='val', in_memory=True)
+    tiny_val = TinyImageSet('data', split='val', in_memory=True)

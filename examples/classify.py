@@ -1,17 +1,16 @@
 from __future__ import division
 
 import os
-from functools import partial
 
 import torch
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
 from tea.models.builder import get_input_size
-from tea.models.core import BasicModel
-from tea.dataset.tiny_imageset import TinyImageSet
-from tea.models.cfg_parser import parse_data_config, parse_model_config
-from tea.trainer.core import find_min_lr
+from tea.models.basic_model import BasicModel
+from tea.data.tiny_imageset import TinyImageSet
+from tea.config.parser import parse_data_config, parse_model_config
+from tea.config.helper import find_min_lr
 
 
 from fastai.script import call_parse
@@ -19,9 +18,6 @@ from fastai.basic_data import DataBunch
 from fastai.basic_train import Learner
 from fastai.train import lr_find, fit_one_cycle
 from fastai.vision import accuracy
-from fastai.callbacks.tracker import EarlyStoppingCallback
-
-import matplotlib.pyplot as plt
 
 
 @call_parse
@@ -69,7 +65,7 @@ def main(cfg_file='../cfg/my-vgg.cfg',
     ])
 
     in_memory = True
-    # Get dataset configuration
+    # Get data configuration
     data_config = parse_data_config(cfg_data)
     train_path = data_config["train"]
     valid_path = data_config["valid"]
