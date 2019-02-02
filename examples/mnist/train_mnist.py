@@ -7,7 +7,7 @@ from tea.vision.cv import transforms
 from tea.config.helper import parse_cfg, print_cfg, get_epochs
 from tea.data.helper import build_train_val_dataloader
 from tea.models.basic_model import build_model
-from tea.trainer.base_learner import BaseLearner
+from tea.trainer.base_learner import find_best_lr, build_trainer
 
 
 def build_train_val_datasets(cfg):
@@ -25,20 +25,6 @@ def build_train_val_datasets(cfg):
                        ]))
     return train_ds, valid_ds
 
-
-def build_trainer(cfg, model, train_loader, val_loader):
-    return BaseLearner(cfg, model, train_loader, val_loader)
-
-
-def find_best_lr(classifier, train_loader):
-    lrs = []
-    for i in range(5):
-        batches = random.randint(90, 100)
-        r = classifier.find_lr(train_loader, batches=batches)
-        lrs.append(r.get_lr_with_min_loss()[0])
-
-    lr = sum(lrs)/len(lrs)/10.0
-    return lr
 
 
 def run(ini_file='mnist.ini', epochs=10, lr=0.01, batch_sz=256, log_freq=10, gpu_flag=1):
@@ -60,7 +46,6 @@ def run(ini_file='mnist.ini', epochs=10, lr=0.01, batch_sz=256, log_freq=10, gpu
     lr = find_best_lr(classifier, train_loader)
     print(f"Ideal learning rate {lr}")
 
-    lr = 0.01
     epochs = get_epochs(cfg)
     classifier.fit(train_loader, val_loader, epochs=epochs, lr=lr)
 

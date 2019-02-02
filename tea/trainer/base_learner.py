@@ -1,10 +1,8 @@
 import math
 import copy
-
+import random
 import torch
 from torch.optim import SGD
-from torch.optim.lr_scheduler import StepLR
-
 
 from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
 from ignite.metrics import Accuracy, Loss
@@ -39,6 +37,21 @@ def create_evaluator(cfg, model):
     return evaluator
 
 
+def build_trainer(cfg, model, train_loader, val_loader):
+    return BaseLearner(cfg, model, train_loader, val_loader)
+
+
+def find_best_lr(classifier, train_loader):
+    lrs = []
+    for i in range(5):
+        batches = random.randint(90, 100)
+        r = classifier.find_lr(train_loader, batches=batches)
+        lrs.append(r.get_lr_with_min_loss()[0])
+
+    lr = sum(lrs)/len(lrs)/2.0
+    return lr
+
+
 def find_lr(learner, train_dl, start_lr=1.0e-5, end_lr=10, batches=100, path='/tmp/lr_tmp.pch'):
     learner.save_model(path, with_optimizer=False)
 
@@ -65,13 +78,14 @@ def fit(learner, train_dl, valid_dl=None, epochs=None, lr=None):
     optimizer = create_optimizer(learner.cfg, learner.model, lr)
     trainer = create_trainer(learner.cfg, learner.model, optimizer)
     evaluator = None if not valid_dl else create_evaluator(learner.cfg, learner.model)
-    step_size = epochs // 5
+    step_size = epochs // 2
     step_size = step_size if step_size > 0 else 1
     scheduler = create_scheduler(learner.cfg, optimizer, step_size)
 
     @trainer.on(Events.EPOCH_STARTED)
     def scheduler_step(engine):
         scheduler.step()
+        print('AAA', scheduler.get_lr())
 
     pbar = tqdm(
         initial=0, leave=False, total=len(learner.train_dl),
