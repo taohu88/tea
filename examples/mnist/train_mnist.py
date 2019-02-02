@@ -40,7 +40,8 @@ def find_best_lr(classifier, train_loader):
     lr = sum(lrs)/len(lrs)/10.0
     return lr
 
-def run(ini_file='mnist.ini', epochs=20, lr=0.01, batch_sz=256, log_freq=10, gpu_flag=1):
+
+def run(ini_file='mnist.ini', epochs=10, lr=0.01, batch_sz=256, log_freq=10, gpu_flag=1):
     # Step 1: parse config
     cfg = parse_cfg(ini_file, epochs=epochs, lr=lr, batch_sz=batch_sz, log_freq=log_freq, gpu_flag=gpu_flag)
     print_cfg(cfg)
@@ -59,8 +60,8 @@ def run(ini_file='mnist.ini', epochs=20, lr=0.01, batch_sz=256, log_freq=10, gpu
     lr = find_best_lr(classifier, train_loader)
     print(f"Ideal learning rate {lr}")
 
-    epochs = get_epochs(cfg)
     lr = 0.01
+    epochs = get_epochs(cfg)
     classifier.fit(train_loader, val_loader, epochs=epochs, lr=lr)
 
 
