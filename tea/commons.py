@@ -16,3 +16,4 @@ def self_or_first(x):
     if islist(x):
         return x[0]
     return x
+

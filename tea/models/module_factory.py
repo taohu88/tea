@@ -5,7 +5,9 @@ import torch.nn as nn
 from functools import reduce
 from .cal_sizes import conv2d_out_shape
 from ..modules.core import SmartLinear, SumLayer, ConcatLayer
-from ..yolo.yolo3_layer import YOLO3Layer
+
+
+# TODO so many string, refactor to get rid of them
 
 
 def get_int(module_def, key):
@@ -20,15 +22,13 @@ def has_batch_normalize(module_def):
     return is_true(module_def, "batch_normalize")
 
 
-def get_input_size(hyperparams):
-    """
-    :param hyperparams:
-    :return (Batch, Channel, H, W) as used in pytorch
-    """
-    c = int(hyperparams["channels"])
-    h = int(hyperparams["crop_height"]) if "crop_height" in hyperparams else int(hyperparams["height"])
-    w = int(hyperparams["crop_width"]) if "crop_width" in hyperparams else int(hyperparams["width"])
-    return (None, c, h, w)
+def get_input_size(input_cfg):
+    sizes_str = input_cfg["dimensions"]
+    sizes_str = sizes_str.split('x')
+
+    sizes = [int(s) for s in sizes_str]
+    sizes = [None] + sizes
+    return tuple(sizes)
 
 
 def make_activation(module_def):
@@ -131,30 +131,14 @@ def make_sum_layer(module_def, in_sizes, layer_num=None):
     return module, tuple(prev_out_sz)
 
 
-def make_yolo3_layer(module_def, in_sizes, layer_num=None):
-    prev_out_sz = in_sizes[-1]
-    anchor_idxs = [int(x) for x in module_def["mask"].split(",")]
-    # Extract anchors
-    anchors = [int(x) for x in module_def["anchors"].split(",")]
-    anchors = [(anchors[i], anchors[i + 1]) for i in range(0, len(anchors), 2)]
-    anchors = [anchors[i] for i in anchor_idxs]
-    num_classes = int(module_def["classes"])
-    # original img size
-    img_height = in_sizes[0][2]
-    # Define detection layer
-    module = YOLO3Layer(anchors, num_classes, img_height)
-    return module, tuple(prev_out_sz)
-
-
 _BUILDERS_ = {
-    "convolutional": make_conv2d_layer,
+    "conv2d": make_conv2d_layer,
     "connected": make_fc_layer,
     "dropout": make_dropout_layer,
     "maxpool": make_maxpool2d_layer,
     "upsample": make_upsample_layer,
     "route": make_route_layer,
     "shortcut": make_sum_layer,
-    "yolo": make_yolo3_layer,
 }
 
 

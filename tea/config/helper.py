@@ -49,6 +49,15 @@ def print_cfg(cfg):
             print(f"\t{k} = {v}")
 
 
+def load_classes(path):
+    """
+    Loads class labels at 'path'
+    """
+    fp = open(path, "r")
+    names = fp.read().split("\n")[:-1]
+    return names
+
+
 def get_data_in_dir(cfg):
     return cfg.get(CfgKeys.data.value, CfgKeys.data_in_dir.value)
 
@@ -82,7 +91,7 @@ def get_epochs(cfg):
 
 
 def get_device(cfg):
-    use_cuda = cfg.getboolean('hypers', 'use_gpu', fallback=False)
+    use_cuda = cfg.getboolean(CfgKeys.hypers.value, CfgKeys.use_gpu.value, fallback=False)
     if use_cuda and torch.cuda.is_available():
         return "cuda"
     return None

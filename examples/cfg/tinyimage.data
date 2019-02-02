@@ -1,4 +1,0 @@
-classes= 200
-train=../dataset/tiny-imagenet-200
-valid=../dataset/tiny-imagenet-200
-names=../dataset/tiny-imagenet-200/labels.txt

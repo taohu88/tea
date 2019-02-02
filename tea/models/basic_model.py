@@ -2,20 +2,8 @@ from __future__ import division
 
 import torch.nn as nn
 
-from .builder import create_module_list, get_input_size
+from .module_factory import create_module_list
 from ..modules.core import SumLayer, ConcatLayer
-from ..config.parser import parse_model_config
-from ..config.helper import get_model_cfg
-
-
-def build_model(cfg):
-    # TODO refactor this out of here
-    model_cfg = get_model_cfg(cfg)
-    module_defs = parse_model_config(model_cfg)
-    hyperparams = module_defs.pop(0)
-    input_sz = get_input_size(hyperparams)
-
-    return BasicModel(module_defs, input_sz)
 
 
 class BasicModel(nn.Module):
@@ -28,6 +16,7 @@ class BasicModel(nn.Module):
         if init_weights:
             self._initialize_weights()            
 
+    # TODO this is relu only, please make it more sutiable for leakyrelu
     def _initialize_weights(self):
         i = 0
         for m in self.modules():

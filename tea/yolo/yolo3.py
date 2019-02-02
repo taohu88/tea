@@ -4,10 +4,26 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-from models.builder import has_batch_normalize, get_input_size, create_module_list
-from models.cfg_parser import parse_model_config
+from tea.models.module_factory import has_batch_normalize, get_input_size, create_module_list
+from tea.models.parser import parse_model_config
 from collections import defaultdict
-from modules.core import SumLayer, ConcatLayer, YOLO3Layer
+from tea.modules.core import SumLayer, ConcatLayer
+from .yolo3_layer import YOLO3Layer
+
+
+def make_yolo3_layer(module_def, in_sizes, layer_num=None):
+    prev_out_sz = in_sizes[-1]
+    anchor_idxs = [int(x) for x in module_def["mask"].split(",")]
+    # Extract anchors
+    anchors = [int(x) for x in module_def["anchors"].split(",")]
+    anchors = [(anchors[i], anchors[i + 1]) for i in range(0, len(anchors), 2)]
+    anchors = [anchors[i] for i in anchor_idxs]
+    num_classes = int(module_def["classes"])
+    # original img size
+    img_height = in_sizes[0][2]
+    # Define detection layer
+    module = YOLO3Layer(anchors, num_classes, img_height)
+    return module, tuple(prev_out_sz)
 
 
 def create_yolo_modules(module_defs):

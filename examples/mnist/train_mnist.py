@@ -1,12 +1,11 @@
-import random
 import fire
 
 from torchvision import datasets
 
 from tea.vision.cv import transforms
 from tea.config.helper import parse_cfg, print_cfg, get_data_in_dir, get_epochs
-from tea.data.helper import build_train_val_dataloader
-from tea.models.basic_model import build_model
+import tea.data.data_loader_factory as DLFactory
+import tea.models.factory as MFactory
 from tea.trainer.base_learner import find_max_lr, build_trainer
 
 
@@ -39,7 +38,7 @@ with optional override arguments like the following:
 def run(ini_file='mnist.ini',
         data_in_dir='./../../dataset',
         model_cfg='../cfg/lecnn.cfg',
-        model_out_dir='./ models',
+        model_out_dir='./models',
         epochs=10, lr=0.01, batch_sz=256, log_freq=10, use_gpu=True):
     # Step 1: parse config
     cfg = parse_cfg(ini_file,
@@ -51,10 +50,10 @@ def run(ini_file='mnist.ini',
 
     # Step 2: create data sets and loaders
     train_ds, val_ds = build_train_val_datasets(cfg)
-    train_loader, val_loader = build_train_val_dataloader(cfg, train_ds, val_ds)
+    train_loader, val_loader = DLFactory.create_train_val_dataloader(cfg, train_ds, val_ds)
 
     # Step 3: create model
-    model = build_model(cfg)
+    model = MFactory.create_model(cfg)
 
     # Step 4: train/valid
     classifier = build_trainer(cfg, model, train_loader, val_loader)
@@ -68,4 +67,4 @@ def run(ini_file='mnist.ini',
 
 
 if __name__ == '__main__':
-  fire.Fire(run)
+    fire.Fire(run)
