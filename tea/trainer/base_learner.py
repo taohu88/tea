@@ -41,11 +41,11 @@ def build_trainer(cfg, model, train_loader, val_loader):
     return BaseLearner(cfg, model, train_loader, val_loader)
 
 
-def find_best_lr(classifier, train_loader):
+def find_best_lr(classifier, train_loader, path='/tmp/lr_tmp.pch'):
     lrs = []
     for i in range(5):
         batches = random.randint(90, 100)
-        r = classifier.find_lr(train_loader, batches=batches)
+        r = classifier.find_lr(train_loader, batches=batches, path=path)
         lrs.append(r.get_lr_with_min_loss()[0])
 
     lr = sum(lrs)/len(lrs)/2.0
@@ -85,7 +85,6 @@ def fit(learner, train_dl, valid_dl=None, epochs=None, lr=None):
     @trainer.on(Events.EPOCH_STARTED)
     def scheduler_step(engine):
         scheduler.step()
-        print('AAA', scheduler.get_lr())
 
     pbar = tqdm(
         initial=0, leave=False, total=len(learner.train_dl),
