@@ -1,7 +1,9 @@
-from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
-from ignite.metrics import Accuracy, Loss
-
+import math
+from ignite.engine import Events
+from ignite.metrics import RunningAverage
 from tqdm import tqdm
+
+from tea.commons import self_or_first
 
 
 class LogIterationLoss(object):
@@ -46,3 +48,57 @@ class LogValidationMetrics(object):
         pbar = self.pbar
         if pbar:
             pbar.n = pbar.last_print_n = 0
+
+
+class RecordLrAndLoss():
+
+    def __init__(self, trainer, scheduler, batches):
+        self.trainer = trainer
+        self.scheduler = scheduler
+        self.batches = batches
+        self.lr_losses = []
+        self.best_loss = None
+
+        alpha = 0.10
+        avg_output = RunningAverage(output_transform=lambda x: x, alpha=alpha)
+        avg_output.attach(trainer, 'running_avg_loss')
+
+        trainer.add_event_handler(Events.ITERATION_STARTED, self.scheduler_step)
+        trainer.add_event_handler(Events.ITERATION_COMPLETED, self.log_loss)
+
+    def scheduler_step(self, engine):
+        self.scheduler.step()
+
+    def log_loss(self, engine):
+        iter = engine.state.iteration
+
+        if iter >= self.batches:
+            engine.terminate()
+
+        metrics = engine.state.metrics
+        if 'running_avg_loss' not in metrics:
+            return
+
+        avg_loss = metrics['running_avg_loss']
+        if math.isnan(avg_loss):
+            engine.terminate()
+
+        if not self.best_loss:
+            self.best_loss = avg_loss
+        elif self.best_loss > avg_loss:
+            self.best_loss = avg_loss
+
+        if avg_loss > 10 * self.best_loss:
+            engine.terminate()
+
+        lrs = self.scheduler.get_lr()
+        self.lr_losses.append((self_or_first(lrs), avg_loss))
+
+    def get_records(self):
+        return self.lr_losses
+
+    def get_lr_with_min_loss(self):
+        return min(self.lr_losses, key = lambda t: t[1])
+
+
+

@@ -16,7 +16,3 @@ def self_or_first(x):
     if islist(x):
         return x[0]
     return x
-
-
-def is_loss_too_large(l):
-    return l > 10000.0
