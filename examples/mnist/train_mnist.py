@@ -4,21 +4,21 @@ import fire
 from torchvision import datasets
 
 from tea.vision.cv import transforms
-from tea.config.helper import parse_cfg, print_cfg, get_epochs
+from tea.config.helper import parse_cfg, print_cfg, get_data_in_dir, get_epochs
 from tea.data.helper import build_train_val_dataloader
 from tea.models.basic_model import build_model
-from tea.trainer.base_learner import find_best_lr, build_trainer
+from tea.trainer.base_learner import find_max_lr, build_trainer
 
 
 def build_train_val_datasets(cfg):
-    save_path = cfg.get('data', 'save_path')
-    train_ds = datasets.MNIST(save_path, train=True, download=True,
+    data_in_dir = get_data_in_dir(cfg)
+    train_ds = datasets.MNIST(data_in_dir, train=True, download=True,
                        transform=transforms.Compose([
                            transforms.ToTensor(),
                            transforms.Normalize((0.1307,), (0.3081,))
                        ]))
 
-    valid_ds = datasets.MNIST(save_path, train=False,
+    valid_ds = datasets.MNIST(data_in_dir, train=False,
                        transform=transforms.Compose([
                             transforms.ToTensor(),
                             transforms.Normalize((0.1307,), (0.3081,))
@@ -27,9 +27,26 @@ def build_train_val_datasets(cfg):
 
 
 
-def run(ini_file='mnist.ini', epochs=10, lr=0.01, batch_sz=256, log_freq=10, gpu_flag=1):
+"""
+Like anything in life, it is good to follow pattern.
+In this case, any application starts with cfg file, 
+with optional override arguments like the following: 
+    data_dir/path
+    model_cfg
+    model_out_dir
+    epochs, lr, batch etc
+"""
+def run(ini_file='mnist.ini',
+        data_in_dir='./../../dataset',
+        model_cfg='../cfg/lecnn.cfg',
+        model_out_dir='./ models',
+        epochs=10, lr=0.01, batch_sz=256, log_freq=10, use_gpu=True):
     # Step 1: parse config
-    cfg = parse_cfg(ini_file, epochs=epochs, lr=lr, batch_sz=batch_sz, log_freq=log_freq, gpu_flag=gpu_flag)
+    cfg = parse_cfg(ini_file,
+                    data_in_dir=data_in_dir,
+                    model_cfg=model_cfg,
+                    model_out_dir=model_out_dir,
+                    epochs=epochs, lr=lr, batch_sz=batch_sz, log_freq=log_freq, use_gpu=use_gpu)
     print_cfg(cfg)
 
     # Step 2: create data sets and loaders
@@ -43,7 +60,7 @@ def run(ini_file='mnist.ini', epochs=10, lr=0.01, batch_sz=256, log_freq=10, gpu
     classifier = build_trainer(cfg, model, train_loader, val_loader)
 
     # Step 5: optionally find the best lr
-    lr = find_best_lr(classifier, train_loader)
+    lr = find_max_lr(classifier, train_loader)/2.0
     print(f"Ideal learning rate {lr}")
 
     epochs = get_epochs(cfg)

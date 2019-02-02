@@ -5,11 +5,12 @@ import torch.nn as nn
 from .builder import create_module_list, get_input_size
 from ..modules.core import SumLayer, ConcatLayer
 from ..config.parser import parse_model_config
+from ..config.helper import get_model_cfg
 
 
 def build_model(cfg):
-    # TODO don't parse model config
-    model_cfg = cfg.get('model', 'cfg')
+    # TODO refactor this out of here
+    model_cfg = get_model_cfg(cfg)
     module_defs = parse_model_config(model_cfg)
     hyperparams = module_defs.pop(0)
     input_sz = get_input_size(hyperparams)

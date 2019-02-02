@@ -1,6 +1,8 @@
 import math
 import copy
 import random
+from pathlib import Path
+
 import torch
 from torch.optim import SGD
 
@@ -8,7 +10,7 @@ from ignite.engine import Events, create_supervised_trainer, create_supervised_e
 from ignite.metrics import Accuracy, Loss
 
 from tqdm import tqdm
-from tea.config.helper import get_epochs, get_device, get_loss_fn, get_lr, get_momentum, get_log_freq
+from tea.config.helper import get_model_out_dir, get_epochs, get_device, get_loss_fn, get_lr, get_momentum, get_log_freq
 from .handlers import LogIterationLoss, LogValidationMetrics, RecordLrAndLoss
 from .schedulers import create_lr_finder_scheduler, create_scheduler
 
@@ -41,14 +43,16 @@ def build_trainer(cfg, model, train_loader, val_loader):
     return BaseLearner(cfg, model, train_loader, val_loader)
 
 
-def find_best_lr(classifier, train_loader, path='/tmp/lr_tmp.pch'):
+def find_max_lr(learner, train_loader):
+    path = get_model_out_dir(learner.cfg)
+    path = Path(path)/'lr_tmp.pch'
     lrs = []
     for i in range(5):
         batches = random.randint(90, 100)
-        r = classifier.find_lr(train_loader, batches=batches, path=path)
+        r = learner.find_lr(train_loader, batches=batches, path=path)
         lrs.append(r.get_lr_with_min_loss()[0])
 
-    lr = sum(lrs)/len(lrs)/2.0
+    lr = sum(lrs)/len(lrs)
     return lr
 
 

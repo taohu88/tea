@@ -3,8 +3,7 @@
 # Some basic setup for now
 #
 
-import os
-from setuptools import setup, find_packages
+from setuptools import setup
 
 
 with open('README.md') as f:
@@ -22,7 +21,7 @@ setup(
     license = license,
     keywords = "deep learning app framework",
     url = "https://github.com/taohu88/tea",
-    packages=['teat'],
+    packages=['tea'],
     long_description=readme,
     classifiers=[
         "Development Status :: 3 - Alpha",
