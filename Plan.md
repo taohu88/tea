@@ -28,7 +28,7 @@
 * More advanced learning schedule
 * Lr schduler factory refactor
 
-# Version 0.1.0 (Relative stable code)
+# Version 0.1.0 (First stable code)
 * Add test cases placeholders
 * Add one test case for each major package
 * Ready to test imagenet data set with different models
@@ -37,3 +37,6 @@
 * Support model build beyond text/vision
 
 # Version 0.2.0 (Face recognition)
+
+# Version 0.3.0 (Reinforcement learning)
+* Go???
