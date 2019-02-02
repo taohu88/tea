@@ -12,8 +12,17 @@ _loss_name_2_fn = {
 }
 
 
+def print_cfg(cfg):
+    print("Configurations:")
+    for each_section in cfg.sections():
+        print(f"[{each_section}]")
+        for (k, v) in cfg.items(each_section):
+            print(f"\t{k} = {v}")
+
 def merge_to_section(cfg, section, a_dict):
-    return cfg._unify_values(section, a_dict)
+    # TODO convert to string is a little bit hack, but I don't know how to do it better
+    for k, v in a_dict.items():
+        cfg.set(section, str(k), str(v))
 
 
 def parse_cfg(ini_file, **kwargs):
@@ -23,12 +32,16 @@ def parse_cfg(ini_file, **kwargs):
     return config
 
 
+def get_epochs(cfg):
+    return cfg['hypers'].getint('epochs')
+
 
 def get_device(cfg):
-    use_cuda = cfg['hypers'].getboolean('use_gpu', False)
+    use_cuda = cfg.getint('hypers', 'gpu_flag', fallback=0)
     if use_cuda and torch.cuda.is_available():
         return "cuda"
     return None
+
 
 #TODO refactor this out of here
 def get_loss_fn(cfg):
@@ -45,7 +58,7 @@ def get_momentum(cfg):
 
 
 def get_log_freq(cfg):
-    return cfg['hypers'].getint('log_freq')
+    return cfg['hypers'].getint('log_freq', -1)
 
 
 def get_batch_sz(cfg):
@@ -65,14 +78,4 @@ def get_test_batch_sz(cfg):
 
 
 def get_num_workers(cfg):
-    return cfg['data'].getint('num_workers', 1)
-
-
-#TODO move it out of here
-def find_min_lr(lrs, losses, skip_start=10, skip_end=5):
-    lrs_t = lrs[skip_start:-skip_end] if skip_end > 0 else lrs[skip_start:]
-    losses_t = losses[skip_start:-skip_end] if skip_end > 0 else losses[skip_start:]
-
-    _, idx = min((val, idx) for (idx, val) in enumerate(losses_t))
-
-    return lrs_t[idx]
+    return cfg['hypers'].getint('num_workers', 1)
