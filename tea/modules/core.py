@@ -26,7 +26,7 @@ class SmartLinear(nn.Linear):
         return F.linear(x, self.weight, self.bias)
 
 
-class Conv2dBatchReLU(nn.Module):
+class Conv2dBatchReLU(nn.Sequential):
     """ This convenience layer groups a 2D convolution, a batchnorm and a ReLU.
     They are executed in a sequential manner.
 
@@ -37,19 +37,18 @@ class Conv2dBatchReLU(nn.Module):
         stride (int or tuple): Stride of the convolution
         padding (int or tuple): padding of the convolution
         momentum (int, optional): momentum of the moving averages of the normalization; Default **0.01**
-        relu (class, optional): Which ReLU to use; Default :class:`torch.nn.LeakyReLU`
+        relu: or any other activation
 
-    Note:
-        If you require the `relu` class to get extra parameters, you can use a `lambda` or `functools.partial`:
-
+    Example:
         >>> conv = ln.layer.Conv2dBatchReLU(
         ...     in_c, out_c, kernel, stride, padding,
-        ...     relu=functools.partial(torch.nn.LeakyReLU, 0.1, inplace=True)
+        ...     relu)
         ... )   # doctest: +SKIP
     """
-    def __init__(self, in_channels, out_channels, kernel_size, stride, padding,
-                 relu=lambda: nn.LeakyReLU(0.1, inplace = True), batch_normalize=1, momentum=0.01):
-        super().__init__()
+    def __init__(self, in_channels, out_channels,
+                 kernel_size, stride, padding, relu,
+                 has_bn=True, momentum=0.01):
+        super(Conv2dBatchReLU, self).__init__()
 
         # Parameters
         self.in_channels = in_channels
@@ -57,31 +56,20 @@ class Conv2dBatchReLU(nn.Module):
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
-        self.batch_normalize = batch_normalize
+        self.has_bn = has_bn
 
-        # Layer
-        if batch_normalize:
-            self.layers = nn.Sequential(
+        if has_bn:
+            modules = [
                 nn.Conv2d(self.in_channels, self.out_channels, self.kernel_size, self.stride, self.padding, bias=False),
                 nn.BatchNorm2d(self.out_channels, momentum=momentum),
-                relu()
-            )
+                relu]
         else:
-            self.layers = nn.Sequential(
+            modules = [
                 nn.Conv2d(self.in_channels, self.out_channels, self.kernel_size, self.stride, self.padding),
-                relu()
-            )
+                relu]
 
-
-    def __repr__(self):
-        s = '{name}({in_channels}, {out_channels}, kernel_size={kernel_size}, stride={stride}, padding={padding}, batch_normalize={batch_normalize} relu={relu})'
-        return s.format(name=self.__class__.__name__,
-                        relu=self.layers[2 if self.batch_normalize else 1],
-                        **self.__dict__)
-
-    def forward(self, x):
-        x = self.layers(x)
-        return x
+        for idx, module in enumerate(modules):
+            self.add_module(str(idx), module)
 
 
 class Identity(nn.Module):

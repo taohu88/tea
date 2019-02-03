@@ -38,7 +38,7 @@ class BasicModel(nn.Module):
             if (type(module) == SumLayer) or \
                (type(module) == ConcatLayer):
                 x = module(layer_outputs)
-            elif (type(module)):
+            else:
                 x = module(x)
             layer_outputs.append(x)
         # return last as an output

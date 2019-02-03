@@ -1,4 +1,4 @@
-from ._bricks import _ModuleEnum
+from .module_enum import ModuleEnum
 
 def parse_model_config(path):
     file = open(path, 'r')
@@ -9,10 +9,10 @@ def parse_model_config(path):
     for line in lines:
         if line.startswith('['): # This marks the start of a new block
             module_defs.append({})
-            module_defs[-1][_ModuleEnum.type] = line[1:-1].rstrip()
+            module_defs[-1][ModuleEnum.type] = line[1:-1].rstrip()
         else:
             key, value = line.split("=")
             value = value.strip()
-            module_defs[-1][_ModuleEnum(key.rstrip())] = value.strip()
+            module_defs[-1][ModuleEnum(key.rstrip())] = value.strip()
 
     return module_defs

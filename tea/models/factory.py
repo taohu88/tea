@@ -1,7 +1,17 @@
 from ..config.helper import get_model_cfg
 from .parser import parse_model_config
-from ._bricks import get_input_size
+from .module_enum import ModuleEnum
 from .basic_model import BasicModel
+
+
+
+def get_input_size(module_def):
+    sizes_str = module_def[ModuleEnum.size]
+    sizes_str = sizes_str.split('x')
+
+    sizes = [int(s) for s in sizes_str]
+    sizes = [None] + sizes
+    return tuple(sizes)
 
 
 def create_model(cfg):
