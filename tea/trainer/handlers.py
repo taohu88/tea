@@ -48,6 +48,7 @@ class LogValidationMetrics(object):
         pbar = self.pbar
         if pbar:
             pbar.n = pbar.last_print_n = 0
+        self.evaluator.reset()
 
 
 class RecordLrAndLoss():

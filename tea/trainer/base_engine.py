@@ -22,7 +22,7 @@ class BaseEngine(Engine):
 
     def __init__(self, process_function):
         super(BaseEngine, self).__init__(process_function)
-        self.state = BaseState()
+        self.reset()
 
     def state_dict(self):
         return {
@@ -34,6 +34,9 @@ class BaseEngine(Engine):
         epoch = old_state.get('epoch', 0)
         iteration = old_state.get('iteration', 0)
         self.state = BaseState(epoch=epoch, iteration=iteration)
+
+    def reset(self):
+        self.state = BaseState()
 
     def _run_once_on_dataset(self, dataloader):
         start_time = time.time()
