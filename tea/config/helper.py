@@ -23,6 +23,7 @@ class CfgKeys(Enum):
     epochs = "epochs"
     lr = "lr"
     momentum = "momentum"
+    weight_decay = "weight_decay"
     log_freq = "log_freq"
     use_gpu = "use_gpu"
     batch_sz = "batch_sz"
@@ -104,32 +105,36 @@ def get_loss_fn(cfg):
 
 
 def get_lr(cfg):
-    return cfg['hypers'].getfloat('lr')
+    return cfg.getfloat(CfgKeys.hypers.value, CfgKeys.lr.value)
 
 
 def get_momentum(cfg):
-    return cfg['hypers'].getfloat('momentum')
+    return cfg.getfloat(CfgKeys.hypers.value, CfgKeys.momentum.value, fallback=0.0)
+
+
+def get_weight_decay(cfg):
+    return cfg.getfloat(CfgKeys.hypers.value, CfgKeys.weight_decay.value, fallback=0.0)
 
 
 def get_log_freq(cfg):
-    return cfg['hypers'].getint('log_freq', -1)
+    return cfg.getint(CfgKeys.hypers.value, CfgKeys.log_freq.value, fallback=-1)
 
 
 def get_batch_sz(cfg):
-    return cfg['hypers'].getint('batch_sz')
+    return cfg.getint(CfgKeys.hypers.value, CfgKeys.batch_sz.value)
 
 
 def get_train_batch_sz(cfg):
-    return cfg['hypers'].getint('train_batch_sz', fallback=get_batch_sz(cfg))
+    return cfg.getint(CfgKeys.hypers.value, CfgKeys.train_batch_sz.value, fallback=get_batch_sz(cfg))
 
 
 def get_val_batch_sz(cfg):
-    return cfg['hypers'].getint('val_batch_sz', fallback=get_batch_sz(cfg))
+    return cfg.getint(CfgKeys.hypers.value, CfgKeys.val_batch_sz.value, fallback=get_batch_sz(cfg))
 
 
 def get_test_batch_sz(cfg):
-    return cfg['hypers'].getint('test_batch_sz', fallback=get_batch_sz(cfg))
+    return cfg.getint(CfgKeys.hypers.value, CfgKeys.test_batch_sz.value, fallback=get_batch_sz(cfg))
 
 
 def get_num_workers(cfg):
-    return cfg['hypers'].getint('num_workers', 1)
+    return cfg.getint(CfgKeys.hypers.value, CfgKeys.num_workers.value, fallback=1)
