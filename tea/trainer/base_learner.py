@@ -17,7 +17,7 @@ from tea.config.helper import get_model_out_dir, get_epochs, get_device, \
 from .handlers import LogIterationLoss, LogValidationMetrics, RecordLrAndLoss
 from .schedulers import create_lr_finder_scheduler, create_scheduler
 from .base_engine import BaseEngine
-from ..optimizer.adamW import AdamW
+from ..optimizer.adamw import AdamW
 
 
 def _prepare_batch(batch, device=None, non_blocking=False):

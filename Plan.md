@@ -2,11 +2,14 @@
 
 # Version 0.0.1 (Done: 2/1/2019)
 * Clean up for mnist training
-* Add lr finder capability
+* Add poor man lr finder capability
+* Parse model from config (initial version)
+* Using [Kaiming initialization](https://arxiv.org/abs/1502.01852)
 
-# Version 0.0.2 (Inprogress)
+# Version 0.0.2 (Done: 2/2/2019)
 * Clean up model file parse (input/output/mutliple output)
 * Initial workable for tinyimage data set and vgg
+* Using [AdamW](https://arxiv.org/pdf/1711.05101.pdf)
 
 # Version 0.0.3 (Yolo3 detect)
 * Yolo V3 detect workable
