@@ -1,6 +1,6 @@
 from ..config.helper import get_model_cfg
 from .parser import parse_model_config
-from .module_factory import get_input_size
+from ._bricks import get_input_size
 from .basic_model import BasicModel
 
 

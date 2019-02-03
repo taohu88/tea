@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 
-from tea.models.module_factory import has_batch_normalize, get_input_size, create_module_list
+from tea.models._bricks import has_batch_normalize, get_input_size, create_module_list
 from tea.models.parser import parse_model_config
 from collections import defaultdict
 from tea.modules.core import SumLayer, ConcatLayer

@@ -2,7 +2,7 @@ from __future__ import division
 
 import torch.nn as nn
 
-from .module_factory import create_module_list
+from ._bricks import create_module_list
 from ..modules.core import SumLayer, ConcatLayer
 
 

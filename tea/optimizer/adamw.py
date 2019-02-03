@@ -89,5 +89,4 @@ class AdamW(torch.optim.Optimizer):
                 p.data.addcdiv_(-step_size, exp_avg, denom)
                 # net result p = p_old - wd * lr * p_old - step_size * exp_avg/denom
 
-
         return loss
