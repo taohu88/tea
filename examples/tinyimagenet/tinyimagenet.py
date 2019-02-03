@@ -7,14 +7,14 @@ from torchvision import transforms
 from tea.config.helper import parse_cfg, print_cfg, get_epochs, get_data_in_dir, get_model_out_dir, get_device
 import tea.data.data_loader_factory as DLFactory
 import tea.models.factory as MFactory
-from tea.trainer.base_learner import find_max_lr, build_trainer
+from tea.trainer.base_learner import find_max_lr, build_trainer, create_optimizer
 from tea.plot.commons import plot_lr_losses
 
 from tea.data.tiny_imageset import TinyImageSet
 import matplotlib.pyplot as plt
 
 from fastai.basic_data import DataBunch
-from fastai.basic_train import Learner
+from examples.tinyimagenet.test_trainer import Learner
 from fastai.train import lr_find, fit_one_cycle
 from fastai.vision import accuracy
 
@@ -83,7 +83,7 @@ def run(ini_file='tinyimg.ini',
     print_cfg(cfg)
 
     # Step 2: create data sets and loaders
-    train_ds, val_ds = build_train_val_datasets(cfg, in_memory=False)
+    train_ds, val_ds = build_train_val_datasets(cfg, in_memory=True)
     train_loader, val_loader = DLFactory.create_train_val_dataloader(cfg, train_ds, val_ds)
 
     # Step 3: create model
@@ -107,25 +107,25 @@ def run(ini_file='tinyimg.ini',
     # print('lr', lr)
     # plt.show()
 
-    # epochs = get_epochs(cfg)
-    # learner.fit(train_loader, val_loader, epochs=epochs, lr=lr)
+    epochs = get_epochs(cfg)
+    learner.fit(train_loader, val_loader, epochs=epochs, lr=lr)
 
-    device = get_device(cfg)
-    data = DataBunch(train_loader, val_loader, device=device)
-    learn = Learner(data, model, loss_func=torch.nn.CrossEntropyLoss(),
-                    metrics=accuracy)
-                  #  callback_fns=[partial(EarlyStoppingCallback, monitor='accuracy', min_delta=0.01, patience=2)])
-
-    # lr_find(learn, start_lr=1e-7, end_lr=10)
-    # learn.recorder.plot()
-    # lrs_losses = [(lr, loss) for lr, loss in zip(learn.recorder.lrs, learn.recorder.losses)]
-    # min_lr = min(lrs_losses[10:-5], key=lambda x: x[1])[0]
-    # lr = min_lr/10.0
-    # plt.show()
-    # print(f'Minimal lr rate is {min_lr} propose init lr {lr}')
-    # fit_one_cycle(learn, epochs, lr)
-
-    learn.fit(epochs, lr)
+    # device = get_device(cfg)
+    # data = DataBunch(train_loader, val_loader, device=device)
+    # learn = Learner(data, model, loss_func=torch.nn.CrossEntropyLoss(),
+    #                 metrics=accuracy)
+    #               #  callback_fns=[partial(EarlyStoppingCallback, monitor='accuracy', min_delta=0.01, patience=2)])
+    #
+    # # lr_find(learn, start_lr=1e-7, end_lr=10)
+    # # learn.recorder.plot()
+    # # lrs_losses = [(lr, loss) for lr, loss in zip(learn.recorder.lrs, learn.recorder.losses)]
+    # # min_lr = min(lrs_losses[10:-5], key=lambda x: x[1])[0]
+    # # lr = min_lr/10.0
+    # # plt.show()
+    # # print(f'Minimal lr rate is {min_lr} propose init lr {lr}')
+    # # fit_one_cycle(learn, epochs, lr)
+    #
+    # learn.fit(epochs, lr)
 
 
 if __name__ == '__main__':

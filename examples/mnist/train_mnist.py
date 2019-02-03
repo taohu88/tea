@@ -58,9 +58,9 @@ def run(ini_file='mnist.ini',
     # Step 4: train/valid
     classifier = build_trainer(cfg, model, train_loader, val_loader)
 
-    # Step 5: optionally find the best lr
-    lr = find_max_lr(classifier, train_loader)/2.0
-    print(f"Ideal learning rate {lr}")
+    # # Step 5: optionally find the best lr
+    # lr = find_max_lr(classifier, train_loader)/2.0
+    # print(f"Ideal learning rate {lr}")
 
     epochs = get_epochs(cfg)
     classifier.fit(train_loader, val_loader, epochs=epochs, lr=lr)

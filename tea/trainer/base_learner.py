@@ -6,79 +6,43 @@ from pathlib import Path
 import torch
 from torch.optim import SGD, Adam
 
-from ignite.engine import Events
+from ignite.engine import Engine, Events, create_supervised_trainer, create_supervised_evaluator
 from ignite.metrics import Accuracy, Loss
-from ignite._utils import convert_tensor
 
 from tqdm import tqdm
-
 from tea.config.helper import get_model_out_dir, get_epochs, get_device, \
     get_loss_fn, get_lr, get_momentum, get_log_freq, get_weight_decay
 from .handlers import LogIterationLoss, LogValidationMetrics, RecordLrAndLoss
 from .schedulers import create_lr_finder_scheduler, create_scheduler
-from .base_engine import BaseEngine
-
-
-def _prepare_batch(batch, device=None, non_blocking=False):
-    """Prepare batch for training: pass to a device with options
-    """
-    x, y = batch
-    return (convert_tensor(x, device=device, non_blocking=non_blocking),
-            convert_tensor(y, device=device, non_blocking=non_blocking))
+from ..optimizer.adamW import AdamW
 
 
 # TODO fix this, not just use Adam
 def create_optimizer(cfg, model, lr):
     momentum = get_momentum(cfg)
     weight_decay = get_weight_decay(cfg)
+    print('AAA', lr, momentum, weight_decay)
 #    optimizer = Adam(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
-    optimizer = Adam(model.parameters(), lr=lr, betas=(0.9, 0.99), weight_decay=weight_decay)
+    optimizer = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.99), weight_decay=weight_decay)
     return optimizer
 
 
 def create_trainer(cfg, model, optimizer):
     device = get_device(cfg)
     loss_fn = get_loss_fn(cfg)
-
-    if device:
-        model.to(device)
-
-    def _update(engine, batch):
-        model.train()
-        optimizer.zero_grad()
-        x, y = _prepare_batch(batch, device=device, non_blocking=False)
-        y_pred = model(x)
-        loss = loss_fn(y_pred, y)
-        loss.backward()
-        optimizer.step()
-        return loss.item()
-
-    return BaseEngine(_update)
+    trainer = create_supervised_trainer(model, optimizer, loss_fn, device=device)
+    return trainer
 
 
 def create_evaluator(cfg, model):
     device = get_device(cfg)
     loss_fn = get_loss_fn(cfg)
 
-    metrics = {'accuracy': Accuracy(),
-               'loss': Loss(loss_fn)}
-
-    if device:
-        model.to(device)
-
-    def _inference(engine, batch):
-        model.eval()
-        with torch.no_grad():
-            x, y = _prepare_batch(batch, device=device, non_blocking=False)
-            y_pred = model(x)
-            return y_pred, y
-
-    engine = BaseEngine(_inference)
-
-    for name, metric in metrics.items():
-        metric.attach(engine, name)
-
-    return engine
+    evaluator = create_supervised_evaluator(model,
+                                            metrics={'accuracy': Accuracy(),
+                                                     'loss': Loss(loss_fn)},
+                                            device=device)
+    return evaluator
 
 
 def build_trainer(cfg, model, train_loader, val_loader):
@@ -98,7 +62,7 @@ def find_max_lr(learner, train_loader):
     return lr
 
 
-def find_lr(learner, train_dl, start_lr=1.0e-7, end_lr=10, batches=100, path='/tmp/lr_tmp.pch'):
+def find_lr(learner, train_dl, start_lr=1.0e-5, end_lr=10, batches=100, path='/tmp/lr_tmp.pch'):
     learner.save_model(path, with_optimizer=False)
 
     lr = get_lr(learner.cfg)
@@ -203,3 +167,5 @@ class BaseLearner(object):
         self.model.load_state_dict(model_state)
         if opt_state:
             self.optimizer.load_state_dict(opt_state)
+
+
