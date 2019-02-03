@@ -38,6 +38,8 @@ class LogValidationMetrics(object):
         self.pbar = pbar
 
     def __call__(self, engine):
+        " It could be re-entried multiple times"
+        self.evaluator.reset()
         self.evaluator.run(self.valid_dl)
         metrics = self.evaluator.state.metrics
         avg_accuracy = metrics['accuracy']
@@ -48,7 +50,6 @@ class LogValidationMetrics(object):
         pbar = self.pbar
         if pbar:
             pbar.n = pbar.last_print_n = 0
-        self.evaluator.reset()
 
 
 class RecordLrAndLoss():

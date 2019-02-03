@@ -135,9 +135,9 @@ def fit(learner, train_dl, valid_dl=None, epochs=None, lr=None):
     step_size = step_size if step_size > 0 else 1
     scheduler = create_scheduler(learner.cfg, optimizer, step_size)
 
-    @trainer.on(Events.EPOCH_STARTED)
-    def scheduler_step(engine):
-        scheduler.step()
+    # @trainer.on(Events.EPOCH_STARTED)
+    # def scheduler_step(engine):
+    #     scheduler.step()
 
     pbar = tqdm(
         initial=0, leave=False, total=len(learner.train_dl),
@@ -149,7 +149,22 @@ def fit(learner, train_dl, valid_dl=None, epochs=None, lr=None):
         trainer.add_event_handler(Events.ITERATION_COMPLETED, LogIterationLoss(log_freq, pbar))
 
     if learner.valid_dl:
-        trainer.add_event_handler(Events.EPOCH_COMPLETED, LogValidationMetrics(evaluator, valid_dl, pbar))
+        # trainer.add_event_handler(Events.EPOCH_COMPLETED, LogValidationMetrics(evaluator, valid_dl, pbar))
+        @trainer.on(Events.EPOCH_COMPLETED)
+        def on_epoch_completed(engine):
+            " It could be re-entried multiple times"
+            evaluator.reset()
+            evaluator.run(learner.valid_dl)
+            metrics = evaluator.state.metrics
+            avg_accuracy = metrics['accuracy']
+            avg_loss = metrics['loss']
+            tqdm.write(
+                f"Validation - Epoch: {engine.state.epoch}  Avg accuracy: {avg_accuracy:.3f} Avg loss: {avg_loss:.3f}")
+
+            if pbar:
+                pbar.n = pbar.last_print_n = 0
+            scheduler.step(avg_loss)
+
     if not epochs:
         epochs = get_epochs(learner.cfg)
     trainer.run(train_dl, max_epochs=epochs)

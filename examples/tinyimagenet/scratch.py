@@ -2,15 +2,20 @@ from __future__ import division
 import fire
 from pathlib import Path
 
+import torch
 from torchvision import transforms
-from tea.config.helper import parse_cfg, print_cfg, get_epochs, get_data_in_dir, get_model_out_dir
+from tea.config.helper import parse_cfg, print_cfg, get_epochs, get_data_in_dir, get_model_out_dir, get_device
 import tea.data.data_loader_factory as DLFactory
 import tea.models.factory as MFactory
-from tea.trainer.base_learner import build_trainer
+from tea.trainer.base_learner import find_max_lr, build_trainer, create_optimizer
 from tea.plot.commons import plot_lr_losses
 
 from tea.data.tiny_imageset import TinyImageSet
 import matplotlib.pyplot as plt
+
+from fastai.basic_data import DataBunch
+from fastai.train import lr_find, fit_one_cycle, Learner
+from fastai.vision import accuracy
 
 
 def build_train_val_datasets(cfg, in_memory=False):
@@ -66,8 +71,7 @@ def run(ini_file='tinyimg.ini',
         batch_sz=256,
         num_worker=4,
         log_freq=20,
-        use_gpu=True,
-        explore_lr=False):
+        use_gpu=True):
     # Step 1: parse config
     cfg = parse_cfg(ini_file,
                     data_in_dir=data_in_dir,
@@ -85,21 +89,23 @@ def run(ini_file='tinyimg.ini',
     model = MFactory.create_model(cfg)
 
     # Step 4: train/valid
-    learner = build_trainer(cfg, model, train_loader, val_loader)
+    # This demos our approach can be easily intergrate with our app framework
+    device = get_device(cfg)
+    data = DataBunch(train_loader, val_loader, device=device)
+    learn = Learner(data, model, loss_func=torch.nn.CrossEntropyLoss(),
+                    metrics=accuracy)
+                  #  callback_fns=[partial(EarlyStoppingCallback, monitor='accuracy', min_delta=0.01, patience=2)])
 
-    # Step 5: optionally find the best lr
-    if explore_lr:
-        path = get_model_out_dir(learner.cfg)
-        path = Path(path) / 'lr_tmp.pch'
-        lrs = []
-        r = learner.find_lr(train_loader, start_lr=1.0e-7, end_lr=1.0, batches=100, path=path)
-        plot_lr_losses(r.lr_losses[10:-5])
-        lr = r.get_lr_with_min_loss()[0]
-        print('lr', lr)
-        plt.show()
-    else:
-        epochs = get_epochs(cfg)
-        learner.fit(train_loader, val_loader, epochs=epochs, lr=lr)
+    # lr_find(learn, start_lr=1e-7, end_lr=10)
+    # learn.recorder.plot()
+    # lrs_losses = [(lr, loss) for lr, loss in zip(learn.recorder.lrs, learn.recorder.losses)]
+    # min_lr = min(lrs_losses[10:-5], key=lambda x: x[1])[0]
+    # lr = min_lr/10.0
+    # plt.show()
+    # print(f'Minimal lr rate is {min_lr} propose init lr {lr}')
+    # fit_one_cycle(learn, epochs, lr)
+
+    learn.fit(epochs, lr)
 
 
 if __name__ == '__main__':
