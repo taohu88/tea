@@ -1,6 +1,5 @@
 import torch.nn as nn
 
-from ._bricks import create_module_list
 from ..modules.core import SumLayer, ConcatLayer
 from .init import _initialize_weights
 
@@ -8,9 +7,9 @@ from .init import _initialize_weights
 class BasicModel(nn.Module):
     """Basic model for many use cases such as classification"""
 
-    def __init__(self, module_defs, input_sz, init_weights=True):
+    def __init__(self, module_list, init_weights=True):
         super(BasicModel, self).__init__()
-        self.module_list = create_module_list(module_defs, input_sz)
+        self.module_list = module_list
 
         if init_weights:
             self.init_weights()

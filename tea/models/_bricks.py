@@ -42,16 +42,22 @@ def make_dropout_layer(module_def, in_sizes, layer_num=None):
     return nn.Dropout(prob), tuple(prev_out_sz)
 
 
-def make_fc_layer(module_def, in_sizes, layer_num=None):
+def make_fc_layer(module_def, in_sizes, layer_num=None, reshape=None, override_sz=None):
     prev_out_sz = in_sizes[-1]
-    out_sz = int(module_def[ModuleEnum.size])
+    out_sz = override_sz if override_sz else int(module_def[ModuleEnum.size])
     act = make_activation(module_def)
     # from last layer without batch dimension (Batch, F/C, H, W)
     in_sz = reduce(lambda x, y: x * y, prev_out_sz[1:])
-    if is_true(module_def, ModuleEnum.reshape):
-        module_l = [SmartLinear(in_sz, out_sz)]
+    if reshape is None:
+        if is_true(module_def, ModuleEnum.reshape):
+            module_l = [SmartLinear(in_sz, out_sz)]
+        else:
+            module_l = [nn.Linear(in_sz, out_sz)]
     else:
-        module_l = [nn.Linear(in_sz, out_sz)]
+        if reshape:
+            module_l = [SmartLinear(in_sz, out_sz)]
+        else:
+            module_l = [nn.Linear(in_sz, out_sz)]
 
     if act:
         module_l.append(act)
@@ -61,11 +67,11 @@ def make_fc_layer(module_def, in_sizes, layer_num=None):
     return module, (None, out_sz)
 
 
-def make_conv2d_layer(module_def, in_sizes, layer_num=None):
+def make_conv2d_layer(module_def, in_sizes, layer_num=None, override_sz=None):
     prev_out_sz = in_sizes[-1]
     in_filters = prev_out_sz[1]
     bn = has_batch_normalize(module_def)
-    filters = int(module_def[ModuleEnum.filters])
+    filters = override_sz if override_sz else int(module_def[ModuleEnum.filters])
     kernel_size = int(module_def[ModuleEnum.kernel])
     stride = int(module_def[ModuleEnum.stride])
     pad = (kernel_size - 1) // 2 if is_true(module_def, ModuleEnum.has_pad) else 0
@@ -140,25 +146,45 @@ def make_quick_convs(module_def, in_sizes, layer_num=None):
             prev_out_sz[2], prev_out_sz[3] = conv2d_out_shape(prev_out_sz[2:], pool_kernel, pool_stride, padding)
         else:
             filter_size = int(v)
-            kernel_size = get_int(module_def, ModuleEnum.kernel, 3)
-            padding = (kernel_size - 1) // 2 if is_true(module_def, ModuleEnum.has_pad) else 0
-            stride = get_int(module_def, ModuleEnum.stride, 1)
-            bn = has_batch_normalize(module_def)
-            momentum = float(module_def.get(ModuleEnum.momentum, 0.01)) if bn else 0.01
-
-            act = make_activation(module_def)
-            # it is ok for fc not have activation layer, but not this conv2d
-            if not act:
-                act = nn.ReLU(True)
-
-            layers += [Conv2dBatchReLU(prev_out_sz[1], filter_size, kernel_size, stride, padding, act, bn, momentum)]
-            # update Channel/filter
-            prev_out_sz[1] = filter_size
+            module, prev_out_sz = make_conv2d_layer(module_def, [prev_out_sz], layer_num=None, override_sz=filter_size)
+            layers += [module]
+            prev_out_sz = list(prev_out_sz)
 
     return nn.Sequential(*layers), tuple(prev_out_sz)
 
 
+def make_quick_fc(module_def, in_sizes, layer_num=None):
+    """
+    A general method for making conv layer from string
+    look like '64, 'D', 128,
+    where D mean drop out
+    :param module_def: module_def is a dictionary
+    :param in_sizes: input sizes from previous layers
+    :param layer_num: optional, what is the layer num of it
+    :return : module, and its output size
+    """
+    prev_out_sz = list(in_sizes[-1])
+    sizes_str = [x.strip() for x in module_def[ModuleEnum.size].split(',')]
+
+    layers = []
+    reshape = True
+    for v in sizes_str:
+        if v == 'D':
+            module, prev_out_sz = make_dropout_layer(module_def, [prev_out_sz], layer_num=None)
+            layers += [module]
+        else:
+            out_sz = int(v)
+            # only need to reshape in first time
+            module, prev_out_sz = make_fc_layer(module_def, [prev_out_sz],
+                                                layer_num=None, override_sz=out_sz, reshape=reshape)
+            layers += [module]
+            reshape = False
+
+    return nn.Sequential(*layers), prev_out_sz
+
+
 _BUILDERS_ = {
+    ModuleEnum.quickfcs: make_quick_fc,
     ModuleEnum.quickconvs: make_quick_convs,
     ModuleEnum.conv2d: make_conv2d_layer,
     ModuleEnum.fc: make_fc_layer,

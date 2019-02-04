@@ -13,6 +13,7 @@ class ModuleEnum(Enum):
     has_pad = "has_pad"
 
     # valid input for fc
+    quickfcs = "quickfcs"
     fc = "fc"
     reshape = "reshape"
 

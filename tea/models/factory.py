@@ -1,5 +1,6 @@
 from ..config.parser import parse_model_config
-from tea.config.module_enum import ModuleEnum
+from ..config.module_enum import ModuleEnum
+from ._bricks import create_module_list
 from .basic_model import BasicModel
 
 
@@ -17,5 +18,6 @@ def create_model(cfg):
     module_defs = parse_model_config(model_cfg)
     input_cfg = module_defs.pop(0)
     input_sz = get_input_size(input_cfg)
+    module_list = create_module_list(module_defs, input_sz)
 
-    return BasicModel(module_defs, input_sz)
+    return BasicModel(module_list)
