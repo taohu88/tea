@@ -3,19 +3,13 @@ This is internal file acting as building block for creating models
 It is not for external use
 """
 import re
-from .module_enum import ModuleEnum
-import torch.nn as nn
 from functools import reduce
+import torch.nn as nn
+
+from ..config.module_enum import ModuleEnum
+from ..config.app_cfg import get_int, is_true
 from .cal_sizes import conv2d_out_shape
 from ..modules.core import Conv2dBatchReLU, SmartLinear, SumLayer, ConcatLayer
-
-
-def get_int(module_def, key):
-    return int(module_def.get(key, 0))
-
-
-def is_true(module_def, key):
-    return get_int(module_def, key) > 0
 
 
 def has_batch_normalize(module_def):
@@ -134,27 +128,28 @@ def make_quick_convs(module_def, in_sizes, layer_num=None):
     filters_str = [x.strip() for x in module_def[ModuleEnum.filters].split(',')]
 
     layers = []
-    act = make_activation(module_def)
-    # it is ok for fc not have activation layer, but not this conv2d
-    if not act:
-        act = nn.ReLU(True)
-
     for v in filters_str:
         if v == 'M':
-            pool_kernel = module_def.get(ModuleEnum.pool_kernel, 2)
-            pool_stride = module_def.get(ModuleEnum.pool_stride, 2)
-            pool_pad = module_def.get(ModuleEnum.pool_pad, 0)
+            pool_kernel = get_int(module_def, ModuleEnum.pool_kernel, 2)
+            pool_stride = get_int(module_def, ModuleEnum.pool_stride, 2)
+            has_pool_pad = is_true(module_def, ModuleEnum.has_pool_pad)
+            padding = (pool_kernel - 1) // 2 if has_pool_pad else 0
 
-            layers += [nn.MaxPool2d(kernel_size=pool_kernel, stride=pool_stride, padding=pool_pad)]
+            layers += [nn.MaxPool2d(kernel_size=pool_kernel, stride=pool_stride, padding=padding)]
             # update the HxW
-            prev_out_sz[2], prev_out_sz[3] = conv2d_out_shape(prev_out_sz[2:], pool_kernel, stride, pool_pad)
+            prev_out_sz[2], prev_out_sz[3] = conv2d_out_shape(prev_out_sz[2:], pool_kernel, pool_stride, padding)
         else:
             filter_size = int(v)
-            kernel_size = module_def.get(ModuleEnum.kernel, 3)
+            kernel_size = get_int(module_def, ModuleEnum.kernel, 3)
             padding = (kernel_size - 1) // 2 if is_true(module_def, ModuleEnum.has_pad) else 0
-            stride = module_def.get(ModuleEnum.stride, 1)
+            stride = get_int(module_def, ModuleEnum.stride, 1)
             bn = has_batch_normalize(module_def)
             momentum = float(module_def.get(ModuleEnum.momentum, 0.01)) if bn else 0.01
+
+            act = make_activation(module_def)
+            # it is ok for fc not have activation layer, but not this conv2d
+            if not act:
+                act = nn.ReLU(True)
 
             layers += [Conv2dBatchReLU(prev_out_sz[1], filter_size, kernel_size, stride, padding, act, bn, momentum)]
             # update Channel/filter

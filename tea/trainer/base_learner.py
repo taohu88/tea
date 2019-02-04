@@ -12,8 +12,6 @@ from ignite._utils import convert_tensor
 
 from tqdm import tqdm
 
-from tea.config.helper import get_model_out_dir, get_epochs, get_device, \
-    get_loss_fn, get_lr, get_momentum, get_log_freq, get_weight_decay
 from .handlers import LogIterationLoss, LogValidationMetrics, RecordLrAndLoss
 from .schedulers import create_lr_finder_scheduler, create_scheduler
 from .base_engine import BaseEngine
@@ -30,16 +28,16 @@ def _prepare_batch(batch, device=None, non_blocking=False):
 
 # TODO fix this, not just use Adam
 def create_optimizer(cfg, model, lr):
-    momentum = get_momentum(cfg)
-    weight_decay = get_weight_decay(cfg)
+    momentum = cfg.get_momentum()
+    weight_decay = cfg.get_weight_decay()
 #    optimizer = Adam(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
     optimizer = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.99), weight_decay=weight_decay)
     return optimizer
 
 
 def create_trainer(cfg, model, optimizer):
-    device = get_device(cfg)
-    loss_fn = get_loss_fn(cfg)
+    device = cfg.get_device()
+    loss_fn = cfg.get_loss_fn()
 
     if device:
         model.to(device)
@@ -58,8 +56,8 @@ def create_trainer(cfg, model, optimizer):
 
 
 def create_evaluator(cfg, model):
-    device = get_device(cfg)
-    loss_fn = get_loss_fn(cfg)
+    device = cfg.get_device()
+    loss_fn = cfg.get_loss_fn()
 
     metrics = {'accuracy': Accuracy(),
                'loss': Loss(loss_fn)}
@@ -87,7 +85,7 @@ def build_trainer(cfg, model, train_loader, val_loader):
 
 
 def find_max_lr(learner, train_loader):
-    path = get_model_out_dir(learner.cfg)
+    path = learner.cfg.get_model_out_dir()
     path = Path(path)/'lr_tmp.pch'
     lrs = []
     for i in range(5):
@@ -102,11 +100,11 @@ def find_max_lr(learner, train_loader):
 def find_lr(learner, train_dl, start_lr=1.0e-7, end_lr=10, batches=100, path='/tmp/lr_tmp.pch'):
     learner.save_model(path, with_optimizer=False)
 
-    lr = get_lr(learner.cfg)
+    lr = learner.cfg.get_lr()
     optimizer = create_optimizer(learner.cfg, learner.model, lr)
     trainer = create_trainer(learner.cfg, learner.model, optimizer)
     scheduler = create_lr_finder_scheduler(optimizer, lr, start_lr, end_lr, batches)
-    log_freq = get_log_freq(learner.cfg)
+    log_freq = learner.cfg.get_log_freq()
     pbar = tqdm(
         initial=0, leave=False, total=batches,
         desc="Batch - loss: {:.3f}".format(0)
@@ -124,9 +122,9 @@ def find_lr(learner, train_dl, start_lr=1.0e-7, end_lr=10, batches=100, path='/t
 
 def fit(learner, train_dl, valid_dl=None, epochs=None, lr=None):
     if not epochs:
-        epochs = get_epochs(learner.cfg)
+        epochs = learner.cfg.get_epochs()
     if not lr:
-        lr = get_lr(learner.cfg)
+        lr = learner.cfg.get_lr()
 
     optimizer = create_optimizer(learner.cfg, learner.model, lr)
     trainer = create_trainer(learner.cfg, learner.model, optimizer)
@@ -144,7 +142,7 @@ def fit(learner, train_dl, valid_dl=None, epochs=None, lr=None):
         desc="Batch - loss: {:.3f}".format(0)
     )
 
-    log_freq = get_log_freq(learner.cfg)
+    log_freq = learner.cfg.get_log_freq()
     if log_freq > 0:
         trainer.add_event_handler(Events.ITERATION_COMPLETED, LogIterationLoss(log_freq, pbar))
 
@@ -166,7 +164,7 @@ def fit(learner, train_dl, valid_dl=None, epochs=None, lr=None):
             scheduler.step(avg_loss)
 
     if not epochs:
-        epochs = get_epochs(learner.cfg)
+        epochs = learner.cfg.get_epochs()
     trainer.run(train_dl, max_epochs=epochs)
 
     pbar.close()
@@ -179,7 +177,7 @@ class BaseLearner(object):
     def __init__(self, cfg, model, train_dl, valid_dl=None):
         self.cfg = cfg
         # explicitily set model to device
-        device = get_device(self.cfg)
+        device = self.cfg.get_device()
         self.model = model.to(device)
         self.train_dl = train_dl
         self.valid_dl = valid_dl
@@ -194,7 +192,7 @@ class BaseLearner(object):
         torch.save(state, path)
 
     def load_model(self, path):
-        device = get_device(self.cfg)
+        device = self.cfg.get_device()
         state = torch.load(path, map_location=device)
 
         if 'model' in state:

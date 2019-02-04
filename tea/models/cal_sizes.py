@@ -1,21 +1,20 @@
-
+from tea.utils.commons import islist
 
 def conv2d_out_shape(h_w, kernel_size=1, stride=1, pad=0, dilation=1):
     """
     Utility function for computing output of convolutions
     takes a tuple of (h,w) and returns a tuple of (h,w)
     """
-
-    if type(h_w) is not tuple:
+    if not islist(h_w):
         h_w = (h_w, h_w)
 
-    if type(kernel_size) is not tuple:
+    if not islist(kernel_size):
         kernel_size = (kernel_size, kernel_size)
 
-    if type(stride) is not tuple:
+    if not islist(stride):
         stride = (stride, stride)
 
-    if type(pad) is not tuple:
+    if not islist(pad):
         pad = (pad, pad)
 
     h = (h_w[0] + (2 * pad[0]) - (dilation * (kernel_size[0] - 1)) - 1) // stride[0] + 1
@@ -29,17 +28,16 @@ def conv2d_transp_out_shape(h_w, kernel_size=1, stride=1, pad=0, dilation=1):
     Utility function for computing output of transposed convolutions
     takes a tuple of (h,w) and returns a tuple of (h,w)
     """
-
-    if type(h_w) is not tuple:
+    if not islist(h_w):
         h_w = (h_w, h_w)
 
-    if type(kernel_size) is not tuple:
+    if not islist(kernel_size):
         kernel_size = (kernel_size, kernel_size)
 
-    if type(stride) is not tuple:
+    if not islist(stride):
         stride = (stride, stride)
 
-    if type(pad) is not tuple:
+    if not islist(pad):
         pad = (pad, pad)
 
     h = (h_w[0] - 1) * stride[0] - 2 * pad[0] + kernel_size[0] + pad[0]

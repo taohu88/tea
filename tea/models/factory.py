@@ -1,8 +1,6 @@
-from ..config.helper import get_model_cfg
-from .parser import parse_model_config
-from .module_enum import ModuleEnum
+from ..config.parser import parse_model_config
+from tea.config.module_enum import ModuleEnum
 from .basic_model import BasicModel
-
 
 
 def get_input_size(module_def):
@@ -15,7 +13,7 @@ def get_input_size(module_def):
 
 
 def create_model(cfg):
-    model_cfg = get_model_cfg(cfg)
+    model_cfg = cfg.get_model_cfg()
     module_defs = parse_model_config(model_cfg)
     input_cfg = module_defs.pop(0)
     input_sz = get_input_size(input_cfg)

@@ -3,14 +3,14 @@ import fire
 from torchvision import datasets
 
 from tea.vision.cv import transforms
-from tea.config.helper import parse_cfg, print_cfg, get_data_in_dir, get_epochs
+from tea.config.app_cfg import AppConfig
 import tea.data.data_loader_factory as DLFactory
 import tea.models.factory as MFactory
 from tea.trainer.base_learner import find_max_lr, build_trainer
 
 
 def build_train_val_datasets(cfg):
-    data_in_dir = get_data_in_dir(cfg)
+    data_in_dir = cfg.get_data_in_dir()
     train_ds = datasets.MNIST(data_in_dir, train=True, download=True,
                        transform=transforms.Compose([
                            transforms.ToTensor(),
@@ -36,17 +36,17 @@ with optional override arguments like the following:
     epochs, lr, batch etc
 """
 def run(ini_file='mnist.ini',
-        data_in_dir='./../../dataset',
+        data_in_dir='../../../dataset',
         model_cfg='../cfg/lecnn.cfg',
         model_out_dir='./models',
         epochs=10, lr=0.01, batch_sz=256, log_freq=10, use_gpu=True):
     # Step 1: parse config
-    cfg = parse_cfg(ini_file,
+    cfg = AppConfig.from_file(ini_file,
                     data_in_dir=data_in_dir,
                     model_cfg=model_cfg,
                     model_out_dir=model_out_dir,
                     epochs=epochs, lr=lr, batch_sz=batch_sz, log_freq=log_freq, use_gpu=use_gpu)
-    print_cfg(cfg)
+    cfg.print()
 
     # Step 2: create data sets and loaders
     train_ds, val_ds = build_train_val_datasets(cfg)
@@ -62,7 +62,7 @@ def run(ini_file='mnist.ini',
     # lr = find_max_lr(classifier, train_loader)/2.0
     # print(f"Ideal learning rate {lr}")
 
-    epochs = get_epochs(cfg)
+    epochs = cfg.get_epochs()
     classifier.fit(train_loader, val_loader, epochs=epochs, lr=lr)
 
 

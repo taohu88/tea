@@ -4,7 +4,7 @@ from pathlib import Path
 
 import torch
 from torchvision import transforms
-from tea.config.helper import parse_cfg, print_cfg, get_epochs, get_data_in_dir, get_model_out_dir, get_device
+from tea.config.app_cfg import parse_cfg, print_cfg, get_epochs, get_data_in_dir, get_model_out_dir, get_device
 import tea.data.data_loader_factory as DLFactory
 import tea.models.factory as MFactory
 from tea.trainer.base_learner import find_max_lr, build_trainer, create_optimizer

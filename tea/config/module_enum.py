@@ -39,7 +39,7 @@ class ModuleEnum(Enum):
     filters = "filters"
     pool_kernel = "pool_kernel"
     pool_stride = "pool_stride"
-    pool_pad = "pool_pad"
+    has_pool_pad = "has_pool_pad"
 
     # has batch normal
     has_bn = "has_bn"

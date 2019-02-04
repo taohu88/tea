@@ -3,7 +3,7 @@ import fire
 from pathlib import Path
 
 from torchvision import transforms
-from tea.config.helper import parse_cfg, print_cfg, get_epochs, get_data_in_dir, get_model_out_dir
+from tea.config.app_cfg import AppConfig
 import tea.data.data_loader_factory as DLFactory
 import tea.models.factory as MFactory
 from tea.trainer.base_learner import build_trainer
@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 
 def build_train_val_datasets(cfg, in_memory=False):
-    data_in_dir = get_data_in_dir(cfg)
+    data_in_dir = cfg.get_data_in_dir()
 
     normalize = transforms.Normalize((.5, .5, .5), (.5, .5, .5))
 
@@ -58,38 +58,39 @@ with optional override arguments like the following:
     epochs, lr, batch etc
 """
 def run(ini_file='tinyimg.ini',
-        data_in_dir='./../../dataset',
-        model_cfg='../cfg/vgg-tiny.cfg',
+        data_in_dir='../../../dataset/tiny-imagenet-200',
+        model_cfg='../cfg/vgg-tiny-simple.cfg',
         model_out_dir='./models',
         epochs=50,
         lr=3.0e-5,
         batch_sz=256,
-        num_worker=4,
+        num_workers=4,
         log_freq=20,
         use_gpu=True,
         explore_lr=False):
     # Step 1: parse config
-    cfg = parse_cfg(ini_file,
-                    data_in_dir=data_in_dir,
-                    model_cfg=model_cfg,
-                    model_out_dir=model_out_dir,
-                    epochs=epochs, lr=lr, batch_sz=batch_sz, log_freq=log_freq,
-                    num_worker=num_worker, use_gpu=use_gpu)
-    print_cfg(cfg)
+    cfg = AppConfig.from_file(ini_file,
+                        data_in_dir=data_in_dir,
+                        model_cfg=model_cfg,
+                        model_out_dir=model_out_dir,
+                        epochs=epochs, lr=lr, batch_sz=batch_sz, log_freq=log_freq,
+                        num_workers=num_workers, use_gpu=use_gpu)
+    cfg.print()
 
     # Step 2: create data sets and loaders
-    train_ds, val_ds = build_train_val_datasets(cfg, in_memory=True)
+    train_ds, val_ds = build_train_val_datasets(cfg, in_memory=False)
     train_loader, val_loader = DLFactory.create_train_val_dataloader(cfg, train_ds, val_ds)
 
     # Step 3: create model
     model = MFactory.create_model(cfg)
+    print(model)
 
     # Step 4: train/valid
     learner = build_trainer(cfg, model, train_loader, val_loader)
 
     # Step 5: optionally find the best lr
     if explore_lr:
-        path = get_model_out_dir(learner.cfg)
+        path = learner.cfg.get_model_out_dir()
         path = Path(path) / 'lr_tmp.pch'
         lrs = []
         r = learner.find_lr(train_loader, start_lr=1.0e-7, end_lr=1.0, batches=100, path=path)
@@ -98,7 +99,7 @@ def run(ini_file='tinyimg.ini',
         print('lr', lr)
         plt.show()
     else:
-        epochs = get_epochs(cfg)
+        epochs = cfg.get_epochs()
         learner.fit(train_loader, val_loader, epochs=epochs, lr=lr)
 
 

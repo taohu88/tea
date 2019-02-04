@@ -3,7 +3,7 @@ from ignite.engine import Events
 from ignite.metrics import RunningAverage
 from tqdm import tqdm
 
-from tea.commons import self_or_first
+from tea.utils.commons import self_or_first
 
 
 class LogIterationLoss(object):
