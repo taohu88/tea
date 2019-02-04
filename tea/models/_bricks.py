@@ -34,7 +34,7 @@ def make_activation(module_def):
         if ModuleEnum.leaky_slope in module_def:
             leaky_slope = float(module_def[ModuleEnum.leaky_slope])
         act = nn.LeakyReLU(leaky_slope, inplace=True)
-    elif act_name == ModuleEnum.linear:
+    elif act_name == ModuleEnum.linear.value:
         act = None
     else:
         raise Exception(f"Unknown {act_name} in {module_def}")
