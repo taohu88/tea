@@ -48,15 +48,6 @@ def build_train_val_datasets(cfg, in_memory=False):
     return train_ds, valid_ds
 
 
-"""
-Like anything in life, it is good to follow pattern.
-In this case, any application starts with cfg file, 
-with optional override arguments like the following: 
-    data_dir/path
-    model_cfg
-    model_out_dir
-    epochs, lr, batch etc
-"""
 def run(ini_file='tinyimg.ini',
         data_in_dir='../../../dataset/tiny-imagenet-200',
         model_cfg='../cfg/vgg-tiny-simple.cfg',

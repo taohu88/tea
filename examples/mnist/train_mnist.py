@@ -27,9 +27,8 @@ def build_train_val_datasets(cfg):
     return train_ds, valid_ds
 
 
-
 """
-Like anything in life, it is good to follow pattern.
+It is good to follow pattern.
 In this case, any application starts with cfg file, 
 with optional override arguments like the following: 
     data_dir/path
