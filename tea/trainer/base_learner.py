@@ -12,7 +12,8 @@ from ignite._utils import convert_tensor
 
 from tqdm import tqdm
 
-from .handlers import LogIterationLoss, LogValidationMetrics, RecordLrAndLoss
+from .callbacks.callbacks import LogTrainLoss, LogValidationMetrics
+from .callbacks.record_lr_loss import RecordLrAndLoss
 from .schedulers import create_lr_finder_scheduler, create_scheduler
 from .base_engine import BaseEngine
 from ..optimizer.adamw import AdamW
@@ -55,13 +56,8 @@ def create_trainer(cfg, model, optimizer):
     return BaseEngine(_update)
 
 
-def create_evaluator(cfg, model):
+def create_evaluator(cfg, model, metrics = {}):
     device = cfg.get_device()
-    loss_fn = cfg.get_loss_fn()
-
-    metrics = {'accuracy': Accuracy(),
-               'loss': Loss(loss_fn)}
-
     if device:
         model.to(device)
 
@@ -105,69 +101,46 @@ def find_lr(learner, train_dl, start_lr=1.0e-7, end_lr=10, batches=100, path='/t
     trainer = create_trainer(learner.cfg, learner.model, optimizer)
     scheduler = create_lr_finder_scheduler(optimizer, lr, start_lr, end_lr, batches)
     log_freq = learner.cfg.get_log_freq()
-    pbar = tqdm(
-        initial=0, leave=False, total=batches,
-        desc="Batch - loss: {:.3f}".format(0)
-    )
 
-    recorder = RecordLrAndLoss(trainer, scheduler, batches, log_freq, pbar)
-
-    epochs = math.ceil(batches/len(train_dl))
-    trainer.run(train_dl, max_epochs=epochs)
-
+    recorder = RecordLrAndLoss(trainer, scheduler, batches, log_freq)
+    max_epochs = math.ceil(batches/len(train_dl))
+    trainer.run(train_dl, max_epochs=max_epochs)
     learner.load_model(path)
 
     return recorder
 
-
-def fit(learner, train_dl, valid_dl=None, epochs=None, lr=None):
-    if not epochs:
-        epochs = learner.cfg.get_epochs()
-    if not lr:
-        lr = learner.cfg.get_lr()
+#
+# TODO add support for start epoch
+#
+def fit(learner, train_dl, valid_dl=None, start_epoch=0):
+    lr = learner.cfg.get_lr()
 
     optimizer = create_optimizer(learner.cfg, learner.model, lr)
     trainer = create_trainer(learner.cfg, learner.model, optimizer)
-    evaluator = None if not valid_dl else create_evaluator(learner.cfg, learner.model)
-    step_size = epochs // 3
-    step_size = step_size if step_size > 0 else 1
-    scheduler = create_scheduler(learner.cfg, optimizer, step_size)
+    if valid_dl:
+        loss_fn = learner.cfg.get_loss_fn()
+        metrics = {'accuracy': Accuracy(),
+                   'loss': Loss(loss_fn)}
+        evaluator = create_evaluator(learner.cfg, learner.model, metrics)
+    else:
+        evaluator = None
 
-    # @trainer.on(Events.EPOCH_STARTED)
-    # def scheduler_step(engine):
-    #     scheduler.step()
-
-    pbar = tqdm(
-        initial=0, leave=False, total=len(learner.train_dl),
-        desc="Batch - loss: {:.3f}".format(0)
-    )
+    scheduler = create_scheduler(learner.cfg, optimizer)
 
     log_freq = learner.cfg.get_log_freq()
     if log_freq > 0:
-        trainer.add_event_handler(Events.ITERATION_COMPLETED, LogIterationLoss(log_freq, pbar))
+        LogTrainLoss(trainer, log_freq, len(train_dl))
 
     if learner.valid_dl:
-        # trainer.add_event_handler(Events.EPOCH_COMPLETED, LogValidationMetrics(evaluator, valid_dl, pbar))
-        @trainer.on(Events.EPOCH_COMPLETED)
-        def on_epoch_completed(engine):
-            " It could be re-entried multiple times"
-            evaluator.reset()
-            evaluator.run(learner.valid_dl)
-            metrics = evaluator.state.metrics
-            avg_accuracy = metrics['accuracy']
-            avg_loss = metrics['loss']
-            tqdm.write(
-                f"Validation - Epoch: {engine.state.epoch}  Avg accuracy: {avg_accuracy:.3f} Avg loss: {avg_loss:.3f}")
+        LogValidationMetrics(trainer, evaluator, valid_dl, scheduler)
 
-            if pbar:
-                pbar.n = pbar.last_print_n = 0
-            scheduler.step(avg_loss)
+    # we hack scheduler steps in log validation metrics
+    # @trainer.on(Events.EPOCH_COMPLETED)
+    # def scheduler_step(engine):
+    #     scheduler.step()
 
-    if not epochs:
-        epochs = learner.cfg.get_epochs()
-    trainer.run(train_dl, max_epochs=epochs)
-
-    pbar.close()
+    max_epochs = learner.cfg.get_epochs()
+    trainer.run(train_dl, max_epochs=max_epochs)
 
 
 class BaseLearner(object):
@@ -181,8 +154,6 @@ class BaseLearner(object):
         self.model = model.to(device)
         self.train_dl = train_dl
         self.valid_dl = valid_dl
-        BaseLearner.fit = fit
-        BaseLearner.find_lr = find_lr
 
     def save_model(self, path, with_optimizer=False):
         if with_optimizer:
@@ -217,3 +188,7 @@ class BaseLearner(object):
         self.model.load_state_dict(model_state)
         if opt_state:
             self.optimizer.load_state_dict(opt_state)
+
+
+BaseLearner.fit = fit
+BaseLearner.find_lr = find_lr

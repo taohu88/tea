@@ -61,7 +61,7 @@ def run(ini_file='tinyimg.ini',
         data_in_dir='../../../dataset/tiny-imagenet-200',
         model_cfg='../cfg/vgg-tiny-simple.cfg',
         model_out_dir='./models',
-        epochs=50,
+        epochs=40,
         lr=1e-3,
         batch_sz=256,
         num_workers=4,
@@ -78,7 +78,7 @@ def run(ini_file='tinyimg.ini',
     cfg.print()
 
     # Step 2: create data sets and loaders
-    train_ds, val_ds = build_train_val_datasets(cfg, in_memory=True)
+    train_ds, val_ds = build_train_val_datasets(cfg, in_memory=False)
     train_loader, val_loader = DLFactory.create_train_val_dataloader(cfg, train_ds, val_ds)
 
     # Step 3: create model
@@ -93,14 +93,13 @@ def run(ini_file='tinyimg.ini',
         path = learner.cfg.get_model_out_dir()
         path = Path(path) / 'lr_tmp.pch'
         lrs = []
-        r = learner.find_lr(train_loader, start_lr=1.0e-5, end_lr=1.0e-2, batches=100, path=path)
+        r = learner.find_lr(train_loader, start_lr=1.0e-5, end_lr=1.0, batches=100, path=path)
         plot_lr_losses(r.lr_losses[10:-5])
         lr = r.get_lr_with_min_loss()[0]
         print('lr', lr)
         plt.show()
     else:
-        epochs = cfg.get_epochs()
-        learner.fit(train_loader, val_loader, epochs=epochs, lr=lr)
+        learner.fit(train_loader, val_loader)
 
 
 if __name__ == '__main__':

@@ -2,7 +2,7 @@ from torch.optim.lr_scheduler import ExponentialLR, StepLR, ReduceLROnPlateau
 
 
 #TODO fix it
-def create_scheduler(cfg, optimizer, step_size=5, gamma=0.2):
+def create_scheduler(cfg, optimizer, gamma=0.2):
     scheduler = ReduceLROnPlateau(optimizer, factor=gamma)
     return scheduler
 
