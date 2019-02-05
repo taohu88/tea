@@ -1,12 +1,14 @@
 import fire
-
+from pathlib import Path
 from torchvision import datasets
 
 from tea.vision.cv import transforms
 from tea.config.app_cfg import AppConfig
 import tea.data.data_loader_factory as DLFactory
 import tea.models.factory as MFactory
-from tea.trainer.base_learner import find_max_lr, build_trainer
+from tea.trainer.base_learner import build_trainer
+from tea.plot.commons import explore_lr_and_plot
+import matplotlib.pyplot as plt
 
 
 def build_train_val_datasets(cfg):
@@ -39,7 +41,9 @@ def run(ini_file='mnist.ini',
         data_in_dir='../../../dataset',
         model_cfg='../cfg/lecnn.cfg',
         model_out_dir='./models',
-        epochs=10, lr=0.01, batch_sz=256, log_freq=10, use_gpu=True):
+        epochs=10,
+        lr=0.01, batch_sz=256, log_freq=10, use_gpu=True,
+        explore_lr=True):
     # Step 1: parse config
     cfg = AppConfig.from_file(ini_file,
                     data_in_dir=data_in_dir,
@@ -56,14 +60,17 @@ def run(ini_file='mnist.ini',
     model = MFactory.create_model(cfg)
 
     # Step 4: train/valid
-    classifier = build_trainer(cfg, model, train_loader, val_loader)
+    learner = build_trainer(cfg, model, train_loader, val_loader)
 
-    # # Step 5: optionally find the best lr
-    # lr = find_max_lr(classifier, train_loader)/2.0
-    # print(f"Ideal learning rate {lr}")
-
-    classifier.fit(train_loader, val_loader)
-
+    # Step 5: optionally find the best lr
+    if explore_lr:
+        path = learner.cfg.get_model_out_dir()
+        path = Path(path) / 'lr_tmp.pch'
+        lr = explore_lr_and_plot(learner, train_loader, path, start_lr=1.0e-5, end_lr=1.0, batches=100)
+        print(f'Idea lr {lr}')
+        plt.show()
+    else:
+        learner.fit(train_loader, val_loader)
 
 if __name__ == '__main__':
     fire.Fire(run)

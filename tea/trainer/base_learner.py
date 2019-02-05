@@ -12,7 +12,8 @@ from ignite._utils import convert_tensor
 
 from tqdm import tqdm
 
-from .callbacks.callbacks import LogTrainLoss, LogValidationMetrics
+from .callbacks.log_output import LogOutput
+from .callbacks.log_metrics import LogValidationMetrics
 from .callbacks.record_lr_loss import RecordLrAndLoss
 from .schedulers import create_lr_finder_scheduler, create_scheduler
 from .base_engine import BaseEngine
@@ -100,9 +101,10 @@ def find_lr(learner, train_dl, start_lr=1.0e-7, end_lr=10, batches=100, path='/t
     optimizer = create_optimizer(learner.cfg, learner.model, lr)
     trainer = create_trainer(learner.cfg, learner.model, optimizer)
     scheduler = create_lr_finder_scheduler(optimizer, lr, start_lr, end_lr, batches)
-    log_freq = learner.cfg.get_log_freq()
 
-    recorder = RecordLrAndLoss(trainer, scheduler, batches, log_freq)
+    recorder = RecordLrAndLoss(scheduler, batches)
+    recorder.attach(trainer)
+
     max_epochs = math.ceil(batches/len(train_dl))
     trainer.run(train_dl, max_epochs=max_epochs)
     learner.load_model(path)
@@ -129,10 +131,13 @@ def fit(learner, train_dl, valid_dl=None, start_epoch=0):
 
     log_freq = learner.cfg.get_log_freq()
     if log_freq > 0:
-        LogTrainLoss(trainer, log_freq, len(train_dl))
+        log_train_loss = LogOutput(log_freq, len(train_dl))
+        log_train_loss.attach(trainer)
 
     if learner.valid_dl:
-        LogValidationMetrics(trainer, evaluator, valid_dl, scheduler)
+        log_metrics = LogValidationMetrics(evaluator, valid_dl, scheduler)
+        log_metrics.attach(trainer)
+
 
     # we hack scheduler steps in log validation metrics
     # @trainer.on(Events.EPOCH_COMPLETED)

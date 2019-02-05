@@ -7,7 +7,7 @@ from tea.config.app_cfg import AppConfig
 import tea.data.data_loader_factory as DLFactory
 import tea.models.factory as MFactory
 from tea.trainer.base_learner import build_trainer
-from tea.plot.commons import plot_lr_losses
+from tea.plot.commons import explore_lr_and_plot
 
 from tea.data.tiny_imageset import TinyImageSet
 import matplotlib.pyplot as plt
@@ -92,11 +92,8 @@ def run(ini_file='tinyimg.ini',
     if explore_lr:
         path = learner.cfg.get_model_out_dir()
         path = Path(path) / 'lr_tmp.pch'
-        lrs = []
-        r = learner.find_lr(train_loader, start_lr=1.0e-5, end_lr=1.0, batches=100, path=path)
-        plot_lr_losses(r.lr_losses[10:-5])
-        lr = r.get_lr_with_min_loss()[0]
-        print('lr', lr)
+        lr = explore_lr_and_plot(learner, train_loader, path, start_lr=1.0e-5, end_lr=1.0, batches=100)
+        print(f'Idea lr {lr}')
         plt.show()
     else:
         learner.fit(train_loader, val_loader)

@@ -9,11 +9,9 @@ from .callback import Callback
 
 class RecordLrAndLoss(Callback):
 
-    def __init__(self, trainer, scheduler, batches, log_freq):
-        self.trainer = trainer
+    def __init__(self, scheduler, batches):
         self.scheduler = scheduler
         self.batches = batches
-        self.log_freq = log_freq
         self.lr_losses = []
         self.best_loss = None
         self.desc = "Batch loss: {:.3f}"
@@ -23,18 +21,20 @@ class RecordLrAndLoss(Callback):
             desc=self.desc.format(0)
         )
 
+    def events_to_attach(self):
+        return [Events.ITERATION_STARTED, Events.ITERATION_COMPLETED, Events.COMPLETED]
+
+    def attach(self, engine):
         alpha = 0.10
         avg_output = RunningAverage(output_transform=lambda x: x, alpha=alpha)
-        avg_output.attach(trainer, 'running_avg_loss')
+        avg_output.attach(engine, 'running_avg_loss')
+        super().attach(engine)
 
-        trainer.add_event_handler(Events.ITERATION_STARTED, self.on_iteration_started)
-        trainer.add_event_handler(Events.ITERATION_COMPLETED, self.on_iteration_completed)
-        trainer.add_event_handler(Events.COMPLETED, self.on_completed)
-
-    def on_iteration_started(self, engine):
+    #TODO fix this, scheduler doens't belong to here
+    def iteration_started(self, engine):
         self.scheduler.step()
 
-    def on_iteration_completed(self, engine):
+    def iteration_completed(self, engine):
         iter = engine.state.iteration
 
         if iter >= self.batches:
@@ -53,7 +53,7 @@ class RecordLrAndLoss(Callback):
         pbar = self.pbar
         if pbar:
             pbar.desc = self.desc.format(engine.state.output)
-            pbar.update(self.log_freq)
+            pbar.update(1)
         else:
             print(self.desc.format(engine.state.output))
 
@@ -69,7 +69,7 @@ class RecordLrAndLoss(Callback):
         lrs = self.scheduler.get_lr()
         self.lr_losses.append((self_or_first(lrs), avg_loss))
 
-    def on_completed(self, engine):
+    def completed(self, engine):
         self.pbar.close()
 
     def get_lr_with_min_loss(self):

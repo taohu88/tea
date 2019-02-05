@@ -1,21 +1,31 @@
 class Callback():
-    def on_epoch_started(self, engine):
+    def epoch_started(self, engine):
         pass
 
-    def on_epoch_completed(self, engine):
+    def epoch_completed(self, engine):
         pass
 
-    def on_started(self, engine):
+    def started(self, engine):
         pass
 
-    def on_completed(self, engine):
+    def completed(self, engine):
         pass
 
-    def on_iteration_started(self, engine):
+    def iteration_started(self, engine):
         pass
 
-    def on_iteration_completed(self, engine):
+    def iteration_completed(self, engine):
         pass
 
     def exception_raised(self, engine):
         pass
+
+    def events_to_attach(self):
+        pass
+
+    def attach(self, engine):
+        events = self.events_to_attach()
+        for e in events:
+            method_name = e.value
+            method_ = getattr(self, method_name)
+            engine.add_event_handler(e, method_)

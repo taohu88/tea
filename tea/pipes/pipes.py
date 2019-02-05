@@ -1,1 +1,0 @@
-# Some basic pipe classes
