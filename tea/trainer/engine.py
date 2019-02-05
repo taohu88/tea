@@ -3,10 +3,13 @@ from ignite.engine import Engine, Events
 from ignite._utils import _to_hours_mins_secs
 
 
-class BaseState(object):
+class RunningState(object):
     """An object that is used to pass internal and user-defined state between event handlers"""
     def __init__(self, **kwargs):
         # state, add epoch variable specifically
+        self._reset()
+
+    def _reset(self, **kwargs):
         self.epoch = 0
         self.iteration = 0
 
@@ -17,26 +20,27 @@ class BaseState(object):
         for k, v in kwargs.items():
             setattr(self, k, v)
 
-
-class BaseEngine(Engine):
-
-    def __init__(self, process_function):
-        super(BaseEngine, self).__init__(process_function)
-        self.reset()
-
     def state_dict(self):
         return {
-            'epoch': self.state.epoch,
-            'iteration': self.state.iteration
+            'epoch': self.epoch,
+            'iteration': self.iteration
         }
 
     def load_state_dict(self, old_state):
         epoch = old_state.get('epoch', 0)
         iteration = old_state.get('iteration', 0)
-        self.state = BaseState(epoch=epoch, iteration=iteration)
+        self._reset(epoch=epoch, iteration=iteration)
 
-    def reset(self):
-        self.state = BaseState()
+
+class TeaEngine(Engine):
+    """
+    TeaEngine mainly fixes the issue where origin Engine doesn't support
+    resume case
+    """
+
+    def __init__(self, process_function):
+        super(TeaEngine, self).__init__(process_function)
+        self.state = RunningState()
 
     def _run_once_on_dataset(self, dataloader):
         start_time = time.time()
@@ -60,17 +64,16 @@ class BaseEngine(Engine):
 
         return hours, mins, secs
 
-    def run(self, dataloader, max_epochs=1):
-        """Runs the process_function over the passed data.
-
-        Args:
-            data (Iterable): Collection of batches allowing repeated iteration (e.g., list or `DataLoader`)
-            max_epochs (int, optional): max epochs to run for (default: 1)
-
-        Returns:
-            State: output state
+    def run(self, dataloader, max_epochs=1, start_epoch=0, iteration=0):
         """
-        self.state.max_epochs = max_epochs
+        Runs the process_function, and support resume from other start_epoch or iteration
+        :param dataloader:
+        :param start_epoch: which epoch to start with
+        :param iteration: which iteration to start with
+        :param max_epochs:
+        :return: RunningState
+        """
+        self.state = RunningState(epoch=start_epoch, iteration=iteration, max_epochs=max_epochs)
         try:
             self._logger.info("Engine run starting with max_epochs={}".format(max_epochs))
             start_time = time.time()

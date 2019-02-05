@@ -2,9 +2,10 @@ from .callback import Callback
 from ignite.engine import Events
 from tqdm import tqdm
 
-
-class LogOutput(Callback):
-    def __init__(self, log_freq, max_batches):
+# TODO do we need this
+class PrintTrainLoss(Callback):
+    def __init__(self, log_freq, max_batches, priority=None):
+        super().__init__(priority)
         if log_freq < 0:
             raise Exception(f"log freq {log_freq} is negative")
         self.log_freq = log_freq

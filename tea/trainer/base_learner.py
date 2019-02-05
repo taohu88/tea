@@ -1,23 +1,21 @@
 import math
 import copy
-import random
-from pathlib import Path
 
 import torch
-from torch.optim import SGD, Adam
-
-from ignite.engine import Events
 from ignite.metrics import Accuracy, Loss
 from ignite._utils import convert_tensor
 
-from tqdm import tqdm
-
-from .callbacks.log_output import LogOutput
-from .callbacks.log_metrics import LogValidationMetrics
+from .callbacks.print_train_loss import PrintTrainLoss
+from .callbacks.print_evaluation_metrics import PrintEvaluationMetrics
 from .callbacks.record_lr_loss import RecordLrAndLoss
+from .callbacks.scheduler_listener import SchedulerListener
+from .callbacks.metric_adapter import MetricAdapter
+from .callbacks.run_evaluator import RunEvaluator
+
 from .schedulers import create_lr_finder_scheduler, create_scheduler
-from .base_engine import BaseEngine
+from .engine import TeaEngine
 from ..optimizer.adamw import AdamW
+from ..metrics.metric_enum import MetricEnum
 
 
 def _prepare_batch(batch, device=None, non_blocking=False):
@@ -32,7 +30,6 @@ def _prepare_batch(batch, device=None, non_blocking=False):
 def create_optimizer(cfg, model, lr):
     momentum = cfg.get_momentum()
     weight_decay = cfg.get_weight_decay()
-#    optimizer = Adam(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
     optimizer = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.99), weight_decay=weight_decay)
     return optimizer
 
@@ -54,7 +51,7 @@ def create_trainer(cfg, model, optimizer):
         optimizer.step()
         return loss.item()
 
-    return BaseEngine(_update)
+    return TeaEngine(_update)
 
 
 def create_evaluator(cfg, model, metrics = {}):
@@ -69,7 +66,7 @@ def create_evaluator(cfg, model, metrics = {}):
             y_pred = model(x)
             return y_pred, y
 
-    engine = BaseEngine(_inference)
+    engine = TeaEngine(_inference)
 
     for name, metric in metrics.items():
         metric.attach(engine, name)
@@ -79,19 +76,6 @@ def create_evaluator(cfg, model, metrics = {}):
 
 def build_trainer(cfg, model, train_loader, val_loader):
     return BaseLearner(cfg, model, train_loader, val_loader)
-
-
-def find_max_lr(learner, train_loader):
-    path = learner.cfg.get_model_out_dir()
-    path = Path(path)/'lr_tmp.pch'
-    lrs = []
-    for i in range(5):
-        batches = random.randint(90, 100)
-        r = learner.find_lr(train_loader, batches=batches, path=path)
-        lrs.append(r.get_lr_with_min_loss()[0])
-
-    lr = sum(lrs)/len(lrs)
-    return lr
 
 
 def find_lr(learner, train_dl, start_lr=1.0e-7, end_lr=10, batches=100, path='/tmp/lr_tmp.pch'):
@@ -111,41 +95,70 @@ def find_lr(learner, train_dl, start_lr=1.0e-7, end_lr=10, batches=100, path='/t
 
     return recorder
 
-#
-# TODO add support for start epoch
-#
-def fit(learner, train_dl, valid_dl=None, start_epoch=0):
-    lr = learner.cfg.get_lr()
+def _attach_callbacks(engine, callbacks):
+    # TODO fix it to honor priorities
+    for cb in callbacks:
+        cb.attach(engine)
 
+
+def _create_def_train_cbs(learner, scheduler, evaluator):
+    train_dl = learner.train_dl
+    valid_dl = learner.valid_dl
+
+    cbs = []
+    log_freq = learner.cfg.get_log_freq()
+    if log_freq > 0:
+        log_train_loss = PrintTrainLoss(log_freq, len(train_dl))
+        cbs.append(log_train_loss)
+
+    if valid_dl:
+        cbs.append(RunEvaluator(evaluator, valid_dl))
+        s_listener = SchedulerListener(scheduler, monitor_metric=MetricEnum.valid_loss.value)
+        cbs.append(PrintEvaluationMetrics())
+    else:
+        s_listener = SchedulerListener(scheduler, monitor_metric=MetricEnum.train_loss.value)
+    cbs.append(s_listener)
+    return cbs
+
+
+def _create_def_val_cbs(learner):
+    loss_fn = learner.cfg.get_loss_fn()
+    cbs = [MetricAdapter(MetricEnum.accuracy.value, Accuracy()),
+           MetricAdapter(MetricEnum.valid_loss.value, Loss(loss_fn))]
+    return cbs
+
+
+def fit(learner, train_dl, valid_dl=None, start_epoch=0,
+        train_callbacks=None, val_callbacks=None,
+        with_def_callbacks=True):
+    lr = learner.cfg.get_lr()
     optimizer = create_optimizer(learner.cfg, learner.model, lr)
     trainer = create_trainer(learner.cfg, learner.model, optimizer)
+    scheduler = create_scheduler(learner.cfg, optimizer)
+
     if valid_dl:
-        loss_fn = learner.cfg.get_loss_fn()
-        metrics = {'accuracy': Accuracy(),
-                   'loss': Loss(loss_fn)}
-        evaluator = create_evaluator(learner.cfg, learner.model, metrics)
+        evaluator = create_evaluator(learner.cfg, learner.model)
     else:
         evaluator = None
 
-    scheduler = create_scheduler(learner.cfg, optimizer)
+    t_cbs = []
+    if train_callbacks:
+        t_cbs += train_callbacks
 
-    log_freq = learner.cfg.get_log_freq()
-    if log_freq > 0:
-        log_train_loss = LogOutput(log_freq, len(train_dl))
-        log_train_loss.attach(trainer)
+    if with_def_callbacks:
+        t_cbs += _create_def_train_cbs(learner, scheduler, evaluator)
+    _attach_callbacks(trainer, t_cbs)
 
-    if learner.valid_dl:
-        log_metrics = LogValidationMetrics(evaluator, valid_dl, scheduler)
-        log_metrics.attach(trainer)
+    v_cbs = []
+    if val_callbacks:
+        v_cbs += val_callbacks
 
-
-    # we hack scheduler steps in log validation metrics
-    # @trainer.on(Events.EPOCH_COMPLETED)
-    # def scheduler_step(engine):
-    #     scheduler.step()
+    if with_def_callbacks:
+        v_cbs += _create_def_val_cbs(learner)
+    _attach_callbacks(evaluator, v_cbs)
 
     max_epochs = learner.cfg.get_epochs()
-    trainer.run(train_dl, max_epochs=max_epochs)
+    trainer.run(train_dl, start_epoch=start_epoch, max_epochs=max_epochs)
 
 
 class BaseLearner(object):

@@ -7,8 +7,7 @@ from tea.config.app_cfg import AppConfig
 import tea.data.data_loader_factory as DLFactory
 import tea.models.factory as MFactory
 from tea.trainer.base_learner import build_trainer
-from tea.plot.commons import explore_lr_and_plot
-
+from tea.trainer.helper import explore_lr_and_plot
 from tea.data.tiny_imageset import TinyImageSet
 import matplotlib.pyplot as plt
 

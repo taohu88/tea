@@ -7,7 +7,7 @@ from tea.config.app_cfg import AppConfig
 import tea.data.data_loader_factory as DLFactory
 import tea.models.factory as MFactory
 from tea.trainer.base_learner import build_trainer
-from tea.plot.commons import explore_lr_and_plot
+from tea.trainer.helper import explore_lr_and_plot
 import matplotlib.pyplot as plt
 
 
@@ -42,7 +42,7 @@ def run(ini_file='mnist.ini',
         model_out_dir='./models',
         epochs=10,
         lr=0.01, batch_sz=256, log_freq=10, use_gpu=True,
-        explore_lr=True):
+        explore_lr=False):
     # Step 1: parse config
     cfg = AppConfig.from_file(ini_file,
                     data_in_dir=data_in_dir,

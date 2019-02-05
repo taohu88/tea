@@ -9,7 +9,8 @@ from .callback import Callback
 
 class RecordLrAndLoss(Callback):
 
-    def __init__(self, scheduler, batches):
+    def __init__(self, scheduler, batches, priority=None):
+        super().__init__(priority)
         self.scheduler = scheduler
         self.batches = batches
         self.lr_losses = []

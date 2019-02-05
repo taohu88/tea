@@ -1,9 +1,9 @@
 from torch.optim.lr_scheduler import ExponentialLR, StepLR, ReduceLROnPlateau
 
 
-#TODO fix it
+# TODO the reduce lr on plateau seems broken, there is not is better
 def create_scheduler(cfg, optimizer, gamma=0.2):
-    scheduler = ReduceLROnPlateau(optimizer, factor=gamma)
+    scheduler = ReduceLROnPlateau(optimizer, factor=gamma, patience=2, threshold=5e-3)
     return scheduler
 
 
