@@ -8,28 +8,32 @@
 
 # Version 0.0.2 (Done: 2/2/2019)
 * Clean up model file parse (input/output/mutliple output)
-* Initial workable for tinyimage data set and vgg
+* Initial workable solution for tinyimage data set and vgg
 * Using [AdamW](https://arxiv.org/pdf/1711.05101.pdf)
 
-# Version 0.0.3 (Yolo3 detect)
-* Yolo V3 detect workable
-* Yolo model refactor
-* Easy model with most single string for cnn 
+# Version 0.0.3 (In progress)
+* Refactor app config and model config parser
+* Add enum support for all app config and model config string
+* Callback support in trainer
+* Callback for scheduler
+* More schedulers
+* Callback for major metrics
+* Nice print out(metrics, lr, etc)
 
-# Version 0.0.4
-* All configuration parse refactor and possible thinking factory approach
+# Version 0.0.4 (Text)
+* Support text dataset
+* Train at least one text model (RNN)
 
 # Version 0.0.5 (Transfer)
 * Transfer learning
 
-# Version 0.0.6 (Text)
-* Support text dataset
-* Train at least one text model (RNN)
+# Version 0.0.6 (Yolo3 detect)
+* Yolo V3 detect workable
+* Yolo model refactor
+* Easy model with most single string for cnn 
 
 # Version 0.0.7 (Gan)
 * Add GAN example
-* More advanced learning schedule
-* Lr schduler factory refactor
 
 # Version 0.1.0 (First stable code)
 * Add test cases placeholders
