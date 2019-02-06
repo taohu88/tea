@@ -95,6 +95,7 @@ def find_lr(learner, train_dl, start_lr=1.0e-7, end_lr=10, batches=100, path='/t
 
     return recorder
 
+
 def _attach_callbacks(engine, callbacks):
     # TODO fix it to honor priorities
     for cb in callbacks:
