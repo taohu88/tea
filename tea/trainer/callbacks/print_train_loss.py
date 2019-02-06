@@ -8,7 +8,9 @@ class PrintTrainLoss(Callback):
         super().__init__(priority)
         if log_freq < 0:
             raise Exception(f"log freq {log_freq} is negative")
+
         self.log_freq = log_freq
+        self.last_iter = 0
         self.desc = "Batch loss: {:7.3f}"
 
         self.pbar = tqdm(
@@ -23,7 +25,7 @@ class PrintTrainLoss(Callback):
         log_freq = self.log_freq
         iter = engine.state.iteration
 
-        if iter % log_freq != 0:
+        if (iter - self.last_iter) % log_freq != 0:
             return
 
         pbar = self.pbar
@@ -37,3 +39,4 @@ class PrintTrainLoss(Callback):
         pbar = self.pbar
         if pbar:
             pbar.n = pbar.last_print_n = 0
+        self.last_iter = engine.state.iteration

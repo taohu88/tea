@@ -4,7 +4,7 @@ from tea.metrics.metric_enum import MetricEnum
 
 
 def get_lrs(scheduler):
-    return [str(param_group['lr']) for param_group in scheduler.optimizer.param_groups]
+    return [param_group['lr'] for param_group in scheduler.optimizer.param_groups]
 
 
 class SchedulerListener(Callback):

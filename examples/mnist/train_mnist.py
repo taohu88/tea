@@ -41,7 +41,7 @@ def run(ini_file='mnist.ini',
         model_cfg='../cfg/lecnn.cfg',
         model_out_dir='./models',
         epochs=10,
-        lr=0.01, batch_sz=256, log_freq=10, use_gpu=True,
+        lr=0.001, batch_sz=256, log_freq=10, use_gpu=True,
         explore_lr=False):
     # Step 1: parse config
     cfg = AppConfig.from_file(ini_file,

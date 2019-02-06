@@ -1,6 +1,7 @@
 from .callback import Callback
 from ignite.engine import Events
 from tea.metrics.metric_enum import MetricEnum
+from tea.utils.commons import islist
 
 
 class PrintEvaluationMetrics(Callback):
@@ -11,9 +12,16 @@ class PrintEvaluationMetrics(Callback):
     def events_to_attach(self):
         return [Events.EPOCH_COMPLETED]
 
-    # TODO Print all metrics nicely
     def epoch_completed(self, engine):
         metrics = engine.state.metrics
-        accuracy = metrics[MetricEnum.accuracy.value]
-        val_loss = metrics[MetricEnum.valid_loss.value]
-        print(f"Epoch: {engine.state.epoch:4d}  accuracy: {accuracy:5.3f} loss: {val_loss:8.3f}")
+        str_l = [f"Epoch: {engine.state.epoch:>4d}"]
+        for k, v in metrics.items():
+            if islist(v):
+                str_l.append(f"{k:>10s}: {str(v):>12s}")
+            elif isinstance(v, float):
+                str_l.append(f"{k:>10s}: {v:>8.3f}")
+            elif isinstance(v, int):
+                str_l.append(f"{k:>10s}: {v:>4d}")
+            else:
+                str_l.append(f"{k:>10s}: {str(v):>16s}")
+        print(' '.join(str_l))
