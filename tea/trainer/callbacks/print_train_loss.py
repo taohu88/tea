@@ -43,5 +43,4 @@ class PrintTrainLoss(Callback):
 
     def completed(self, engine):
         if self.pbar:
-            self.pbar.refresh()
             self.pbar.close()
