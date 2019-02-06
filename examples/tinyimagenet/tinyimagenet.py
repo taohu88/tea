@@ -3,6 +3,7 @@ import fire
 from pathlib import Path
 
 from torchvision import transforms
+from ignite.metrics import Accuracy
 from tea.config.app_cfg import AppConfig
 import tea.data.data_loader_factory as DLFactory
 import tea.models.factory as MFactory
@@ -68,7 +69,7 @@ def run(ini_file='tinyimg.ini',
     cfg.print()
 
     # Step 2: create data sets and loaders
-    train_ds, val_ds = build_train_val_datasets(cfg, in_memory=False)
+    train_ds, val_ds = build_train_val_datasets(cfg, in_memory=True)
     train_loader, val_loader = DLFactory.create_train_val_dataloader(cfg, train_ds, val_ds)
 
     # Step 3: create model
@@ -76,7 +77,7 @@ def run(ini_file='tinyimg.ini',
     print(model)
 
     # Step 4: train/valid
-    learner = build_trainer(cfg, model, train_loader, val_loader)
+    learner = build_trainer(cfg, model)
 
     # Step 5: optionally find the best lr
     if explore_lr:
@@ -86,7 +87,10 @@ def run(ini_file='tinyimg.ini',
         print(f'Idea lr {lr}')
         plt.show()
     else:
-        learner.fit(train_loader, val_loader)
+        # accuracy is a classification metric
+        # there is a bug in accuracy, which specific need two inputs
+        metrics = {"accuracy": Accuracy(output_transform=lambda x: x[:2])}
+        learner.fit(train_loader, val_loader, metrics=metrics)
 
 
 if __name__ == '__main__':

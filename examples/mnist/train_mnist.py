@@ -2,6 +2,7 @@ import fire
 from pathlib import Path
 from torchvision import datasets
 
+from ignite.metrics import Accuracy
 from tea.vision.cv import transforms
 from tea.config.app_cfg import AppConfig
 import tea.data.data_loader_factory as DLFactory
@@ -40,7 +41,7 @@ def run(ini_file='mnist.ini',
         data_in_dir='../../../dataset',
         model_cfg='../cfg/lecnn.cfg',
         model_out_dir='./models',
-        epochs=1,
+        epochs=2,
         lr=0.001, batch_sz=256, log_freq=10, use_gpu=True,
         explore_lr=False):
     # Step 1: parse config
@@ -59,7 +60,7 @@ def run(ini_file='mnist.ini',
     model = MFactory.create_model(cfg)
 
     # Step 4: train/valid
-    learner = build_trainer(cfg, model, train_loader, val_loader)
+    learner = build_trainer(cfg, model)
 
     # Step 5: optionally find the best lr
     if explore_lr:
@@ -69,7 +70,11 @@ def run(ini_file='mnist.ini',
         print(f'Idea lr {lr}')
         plt.show()
     else:
-        learner.fit(train_loader, val_loader)
+        # accuracy is a classification metric
+        # there is a bug in accuracy, which specific need two inputs
+        metrics = {"accuracy": Accuracy(output_transform=lambda x: x[:2])}
+        learner.fit(train_loader, val_loader, metrics=metrics)
+
 
 if __name__ == '__main__':
     fire.Fire(run)

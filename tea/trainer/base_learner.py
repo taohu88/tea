@@ -2,11 +2,16 @@ import math
 import copy
 
 import torch
-from ignite.metrics import Accuracy, Loss
+from ignite.engine import Events
+from ignite.metrics import Accuracy, Loss, RunningAverage
 from ignite._utils import convert_tensor
 
-from .callbacks.print_train_loss import PrintTrainLoss
-from .callbacks.print_evaluation_metrics import PrintEvaluationMetrics
+from ..metrics._metric_enum import _MetricEnum
+from ..metrics.snapshot import Snapshot
+from ..metrics.lr_snapshot import LrSnapshot
+
+from .callbacks._def_batch_printer import DefBatchPrinter
+from .callbacks._def_evaluation_printer import DefEvaluationPrinter
 from .callbacks.record_lr_loss import RecordLrAndLoss
 from .callbacks.scheduler_listener import SchedulerListener
 from .callbacks.metric_adapter import MetricAdapter
@@ -15,7 +20,6 @@ from .callbacks.run_evaluator import RunEvaluator
 from .schedulers import create_lr_finder_scheduler, create_scheduler
 from .engine import TeaEngine
 from ..optimizer.adamw import AdamW
-from ..metrics.metric_enum import MetricEnum
 
 
 def _prepare_batch(batch, device=None, non_blocking=False):
@@ -49,7 +53,7 @@ def create_trainer(cfg, model, optimizer):
         loss = loss_fn(y_pred, y)
         loss.backward()
         optimizer.step()
-        return loss.item()
+        return y_pred, y, loss.item()
 
     return TeaEngine(_update)
 
@@ -74,8 +78,8 @@ def create_evaluator(cfg, model, metrics = {}):
     return engine
 
 
-def build_trainer(cfg, model, train_loader, val_loader):
-    return BaseLearner(cfg, model, train_loader, val_loader)
+def build_trainer(cfg, model):
+    return BaseLearner(cfg, model)
 
 
 def find_lr(learner, train_dl, start_lr=1.0e-7, end_lr=10, batches=100, path='/tmp/lr_tmp.pch'):
@@ -97,83 +101,88 @@ def find_lr(learner, train_dl, start_lr=1.0e-7, end_lr=10, batches=100, path='/t
 
 
 def _attach_callbacks(engine, callbacks):
-    # TODO fix it to honor priorities
     for cb in callbacks:
         cb.attach(engine)
 
 
-def _create_def_train_cbs(learner, scheduler, evaluator):
-    train_dl = learner.train_dl
-    valid_dl = learner.valid_dl
-
+def _create_def_cbs(cfg, evaluator, train_dl, valid_dl, scheduler):
     cbs = []
-    log_freq = learner.cfg.get_log_freq()
+    log_freq = cfg.get_log_freq()
     if log_freq > 0:
-        log_train_loss = PrintTrainLoss(log_freq, len(train_dl))
+        log_train_loss = DefBatchPrinter(log_freq, len(train_dl))
         cbs.append(log_train_loss)
 
-    if valid_dl:
+    if evaluator:
         cbs.append(RunEvaluator(evaluator, valid_dl))
-        s_listener = SchedulerListener(scheduler, monitor_metric=MetricEnum.valid_loss.value)
-        cbs.append(PrintEvaluationMetrics())
+        s_listener = SchedulerListener(scheduler, monitor_metric=_MetricEnum.valid_loss.value)
     else:
-        s_listener = SchedulerListener(scheduler, monitor_metric=MetricEnum.train_loss.value)
+        s_listener = SchedulerListener(scheduler, monitor_metric=_MetricEnum.train_loss.value)
     cbs.append(s_listener)
+    cbs.append(DefEvaluationPrinter())
     return cbs
 
 
-def _create_def_val_cbs(learner):
-    loss_fn = learner.cfg.get_loss_fn()
-    cbs = [MetricAdapter(MetricEnum.accuracy.value, Accuracy()),
-           MetricAdapter(MetricEnum.valid_loss.value, Loss(loss_fn))]
+def _create_def_metrics(cfg, trainer, evaluator, opt):
+    cbs = []
+    if evaluator:
+        loss_fn = cfg.get_loss_fn()
+        cbs.append(MetricAdapter(_MetricEnum.valid_loss.value, Loss(loss_fn)))
+    else:
+        cbs.append(MetricAdapter(_MetricEnum.batch_loss.value,
+                                 Snapshot(output_transform=lambda x: x[2], when=Events.ITERATION_COMPLETED)))
+        cbs.append(MetricAdapter(_MetricEnum.train_loss.value, RunningAverage(output_transform=lambda x: x[2])))
+    cbs.append(MetricAdapter(_MetricEnum.lrs.value, LrSnapshot(trainer, opt)))
     return cbs
 
 
-def fit(learner, train_dl, valid_dl=None, start_epoch=0,
-        train_callbacks=None, metrics_callbacks=None,
-        with_def_callbacks=True):
+def _create_metrics_callbacks(cfg, trainer, evaluator, metrics, opt, use_def_print):
+    cbs = []
+    for name, m in metrics.items():
+        cbs.append(MetricAdapter(name, m))
+
+    if use_def_print:
+        cbs += _create_def_metrics(cfg, trainer, evaluator, opt)
+    _attach_callbacks(evaluator if evaluator else trainer, cbs)
+
+
+def _create_call_backs(cfg, trainer, evaluator, train_dl, valid_dl, scheduler, callbacks, use_def_print):
+    cbs = []
+    if callbacks:
+        for c in callbacks:
+            cbs.append(c)
+
+    if use_def_print:
+        cbs += _create_def_cbs(cfg, evaluator, train_dl, valid_dl, scheduler)
+    _attach_callbacks(trainer, cbs)
+
+
+def fit(learner, train_dl, valid_dl=None,
+        start_epoch=0,
+        metrics={},
+        callbacks=None,
+        use_def_print=True):
     lr = learner.cfg.get_lr()
     optimizer = create_optimizer(learner.cfg, learner.model, lr)
     trainer = create_trainer(learner.cfg, learner.model, optimizer)
     scheduler = create_scheduler(learner.cfg, optimizer)
+    evaluator = create_evaluator(learner.cfg, learner.model) if valid_dl else None
 
-    if valid_dl:
-        evaluator = create_evaluator(learner.cfg, learner.model)
-    else:
-        evaluator = None
-
-    t_cbs = []
-    if train_callbacks:
-        t_cbs += train_callbacks
-
-    if with_def_callbacks:
-        t_cbs += _create_def_train_cbs(learner, scheduler, evaluator)
-    _attach_callbacks(trainer, t_cbs)
-
-    if evaluator:
-        v_cbs = []
-        if metrics_callbacks:
-            v_cbs += metrics_callbacks
-
-        if with_def_callbacks:
-            v_cbs += _create_def_val_cbs(learner)
-        _attach_callbacks(evaluator, v_cbs)
+    _create_metrics_callbacks(learner.cfg, trainer, evaluator, metrics, optimizer, use_def_print)
+    _create_call_backs(learner.cfg, trainer, evaluator, train_dl, valid_dl, scheduler, callbacks, use_def_print)
 
     max_epochs = learner.cfg.get_epochs()
     trainer.run(train_dl, start_epoch=start_epoch, max_epochs=max_epochs)
 
-
+#
+# TODO: what is the value of learner in this case
+#
 class BaseLearner(object):
     """
     This is just plain supervised learner(trainer/evalulator)
     """
-    def __init__(self, cfg, model, train_dl, valid_dl=None):
+    def __init__(self, cfg, model):
         self.cfg = cfg
-        # explicitily set model to device
-        device = self.cfg.get_device()
-        self.model = model.to(device)
-        self.train_dl = train_dl
-        self.valid_dl = valid_dl
+        self.model = model
 
     def save_model(self, path, with_optimizer=False):
         if with_optimizer:

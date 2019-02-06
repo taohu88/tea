@@ -1,4 +1,5 @@
 import time
+from collections import OrderedDict
 from ignite.engine import Engine, Events
 from ignite._utils import _to_hours_mins_secs
 
@@ -16,7 +17,7 @@ class RunningState(object):
         # volatiles
         self.max_epochs = 0
         self.output = None
-        self.metrics = {}
+        self.metrics = OrderedDict()
         for k, v in kwargs.items():
             setattr(self, k, v)
 

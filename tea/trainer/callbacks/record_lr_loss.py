@@ -9,8 +9,8 @@ from .callback import Callback
 
 class RecordLrAndLoss(Callback):
 
-    def __init__(self, scheduler, batches, priority=None):
-        super().__init__(priority)
+    def __init__(self, scheduler, batches):
+        super().__init__()
         self.scheduler = scheduler
         self.batches = batches
         self.lr_losses = []
@@ -27,7 +27,7 @@ class RecordLrAndLoss(Callback):
 
     def attach(self, engine):
         alpha = 0.10
-        avg_output = RunningAverage(output_transform=lambda x: x, alpha=alpha)
+        avg_output = RunningAverage(output_transform=lambda x: x[2], alpha=alpha)
         avg_output.attach(engine, 'running_avg_loss')
         super().attach(engine)
 

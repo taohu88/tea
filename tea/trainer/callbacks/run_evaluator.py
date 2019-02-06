@@ -4,8 +4,8 @@ from ignite.engine import Events
 
 class RunEvaluator(Callback):
 
-    def __init__(self, evaluator, valid_dl, priority=Callback._LOW_TIER+1):
-        super().__init__(priority)
+    def __init__(self, evaluator, valid_dl):
+        super().__init__()
         self.evaluator = evaluator
         self.valid_dl = valid_dl
 

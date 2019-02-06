@@ -1,17 +1,13 @@
 from .callback import Callback
 from ignite.engine import Events
-from tea.metrics.metric_enum import MetricEnum
-
-
-def get_lrs(scheduler):
-    return [param_group['lr'] for param_group in scheduler.optimizer.param_groups]
+from tea.metrics._metric_enum import _MetricEnum
 
 
 class SchedulerListener(Callback):
 
-    def __init__(self, scheduler, metric_name=MetricEnum.lrs.value,
-                 monitor_metric=None, priority=Callback._LOWER_TIER):
-        super().__init__(priority)
+    def __init__(self, scheduler, metric_name=_MetricEnum.lrs.value,
+                 monitor_metric=None):
+        super().__init__()
         self.scheduler = scheduler
         self.metric_name = metric_name
         self.monitor_metric = monitor_metric
@@ -32,7 +28,3 @@ class SchedulerListener(Callback):
             self.scheduler.step(metric, epoch=next_epoch)
         else:
             self.scheduler.step(epoch=next_epoch)
-
-        lrs = get_lrs(self.scheduler)
-        # We also produce metric
-        engine.state.metrics[self.metric_name] = lrs
