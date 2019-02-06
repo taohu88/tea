@@ -11,7 +11,7 @@
 * Initial workable solution for tinyimage data set and vgg
 * Using [AdamW](https://arxiv.org/pdf/1711.05101.pdf)
 
-# Version 0.0.3 (In progress)
+# Version 0.0.3 (In Done: 2/6/2019)
 * Refactor app config and model config parser
 * Add enum support for all app config and model config string
 * Callback support in trainer
