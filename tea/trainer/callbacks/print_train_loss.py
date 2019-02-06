@@ -19,7 +19,7 @@ class PrintTrainLoss(Callback):
         )
 
     def events_to_attach(self):
-        return [Events.ITERATION_COMPLETED, Events.EPOCH_COMPLETED]
+        return [Events.ITERATION_COMPLETED, Events.EPOCH_COMPLETED, Events.COMPLETED]
 
     def iteration_completed(self, engine):
         log_freq = self.log_freq
@@ -40,3 +40,7 @@ class PrintTrainLoss(Callback):
         if pbar:
             pbar.n = pbar.last_print_n = 0
         self.last_iter = engine.state.iteration
+
+    def completed(self, engine):
+        if self.pbar:
+            self.pbar.close()

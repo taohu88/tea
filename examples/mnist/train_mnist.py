@@ -40,7 +40,7 @@ def run(ini_file='mnist.ini',
         data_in_dir='../../../dataset',
         model_cfg='../cfg/lecnn.cfg',
         model_out_dir='./models',
-        epochs=10,
+        epochs=1,
         lr=0.001, batch_sz=256, log_freq=10, use_gpu=True,
         explore_lr=False):
     # Step 1: parse config

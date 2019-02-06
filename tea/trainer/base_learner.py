@@ -129,7 +129,7 @@ def _create_def_val_cbs(learner):
 
 
 def fit(learner, train_dl, valid_dl=None, start_epoch=0,
-        train_callbacks=None, val_callbacks=None,
+        train_callbacks=None, metrics_callbacks=None,
         with_def_callbacks=True):
     lr = learner.cfg.get_lr()
     optimizer = create_optimizer(learner.cfg, learner.model, lr)
@@ -149,13 +149,14 @@ def fit(learner, train_dl, valid_dl=None, start_epoch=0,
         t_cbs += _create_def_train_cbs(learner, scheduler, evaluator)
     _attach_callbacks(trainer, t_cbs)
 
-    v_cbs = []
-    if val_callbacks:
-        v_cbs += val_callbacks
+    if evaluator:
+        v_cbs = []
+        if metrics_callbacks:
+            v_cbs += metrics_callbacks
 
-    if with_def_callbacks:
-        v_cbs += _create_def_val_cbs(learner)
-    _attach_callbacks(evaluator, v_cbs)
+        if with_def_callbacks:
+            v_cbs += _create_def_val_cbs(learner)
+        _attach_callbacks(evaluator, v_cbs)
 
     max_epochs = learner.cfg.get_epochs()
     trainer.run(train_dl, start_epoch=start_epoch, max_epochs=max_epochs)
