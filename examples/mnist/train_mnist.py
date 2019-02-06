@@ -73,3 +73,4 @@ def run(ini_file='mnist.ini',
 
 if __name__ == '__main__':
     fire.Fire(run)
+
