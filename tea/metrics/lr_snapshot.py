@@ -9,8 +9,7 @@ class LrSnapshot():
     """
     Snapshot lrs
     """
-    def __init__(self, trainer, opt):
-        self.trainer = trainer
+    def __init__(self, opt):
         self.opt = opt
 
     def epoch_started(self, engine, name):
@@ -19,4 +18,4 @@ class LrSnapshot():
 
     def attach(self, engine, name):
         # Lr snapshot always associate with trainer
-        self.trainer.add_event_handler(Events.EPOCH_STARTED, self.epoch_started, name)
+        engine.add_event_handler(Events.EPOCH_STARTED, self.epoch_started, name)

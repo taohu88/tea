@@ -122,16 +122,25 @@ def _create_def_cbs(cfg, evaluator, train_dl, valid_dl, scheduler):
     return cbs
 
 
+def _get_train_loss(output):
+    return output[2]
+
+
 def _create_def_metrics(cfg, trainer, evaluator, opt):
     cbs = []
     if evaluator:
         loss_fn = cfg.get_loss_fn()
-        cbs.append(MetricAdapter(_MetricEnum.valid_loss.value, Loss(loss_fn)))
+        cbs.append(MetricAdapter(_MetricEnum.valid_loss.value, Loss(loss_fn), intent_engine=evaluator))
     else:
-        cbs.append(MetricAdapter(_MetricEnum.batch_loss.value,
-                                 Snapshot(output_transform=lambda x: x[2], when=Events.ITERATION_COMPLETED)))
-        cbs.append(MetricAdapter(_MetricEnum.train_loss.value, RunningAverage(output_transform=lambda x: x[2])))
-    cbs.append(MetricAdapter(_MetricEnum.lrs.value, LrSnapshot(trainer, opt)))
+        cbs.append(MetricAdapter(_MetricEnum.train_loss.value,
+                                 RunningAverage(output_transform=_get_train_loss),
+                                 intent_engine=trainer))
+
+    cbs.append(MetricAdapter(_MetricEnum.batch_loss.value,
+                             Snapshot(output_transform=_get_train_loss,
+                                      when=Events.ITERATION_COMPLETED),
+                             intent_engine=trainer))
+    cbs.append(MetricAdapter(_MetricEnum.lrs.value, LrSnapshot(opt), intent_engine=trainer))
     return cbs
 
 
@@ -142,7 +151,8 @@ def _create_metrics_callbacks(cfg, trainer, evaluator, metrics, opt, use_def_pri
 
     if use_def_print:
         cbs += _create_def_metrics(cfg, trainer, evaluator, opt)
-    _attach_callbacks(evaluator if evaluator else trainer, cbs)
+    def_engine = evaluator if evaluator else trainer
+    _attach_callbacks(def_engine, cbs)
 
 
 def _create_call_backs(cfg, trainer, evaluator, train_dl, valid_dl, scheduler, callbacks, use_def_print):
