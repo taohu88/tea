@@ -1,6 +1,9 @@
+from .callback_src_enum import CallbackSrcEnum
+
+
 class Callback():
-    def __init__(self):
-        pass
+    def __init__(self, listen_to=CallbackSrcEnum.train):
+        self.listen_to = listen_to
 
     def epoch_started(self, engine):
         pass

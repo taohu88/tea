@@ -1,3 +1,4 @@
+from .callback_src_enum import CallbackSrcEnum
 from .callback import Callback
 from ignite.engine import Events
 from tqdm import tqdm
@@ -9,8 +10,8 @@ class DefBatchPrinter(Callback):
     """
     This is for internal use only
     """
-    def __init__(self, log_freq, max_batches):
-        super().__init__()
+    def __init__(self, log_freq, max_batches, listen_to=CallbackSrcEnum.train):
+        super().__init__(listen_to=listen_to)
         if log_freq < 0:
             raise Exception(f"log freq {log_freq} is negative")
 

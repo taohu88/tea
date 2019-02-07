@@ -1,9 +1,8 @@
-from __future__ import division
 import fire
 from pathlib import Path
 
 from torchvision import transforms
-from ignite.metrics import Accuracy
+from tea.metrics.accuracy import Accuracy
 from tea.config.app_cfg import AppConfig
 import tea.data.data_loader_factory as DLFactory
 import tea.models.factory as MFactory
@@ -88,8 +87,7 @@ def run(ini_file='tinyimg.ini',
         plt.show()
     else:
         # accuracy is a classification metric
-        # there is a bug in accuracy, which specific need two inputs
-        metrics = {"accuracy": Accuracy(output_transform=lambda x: x[:2])}
+        metrics = {"accuracy": Accuracy()}
         learner.fit(train_loader, val_loader, metrics=metrics)
 
 

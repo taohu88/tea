@@ -1,11 +1,12 @@
+from .callback_src_enum import CallbackSrcEnum
 from .callback import Callback
 from ignite.engine import Events
 
 
 class RunEvaluator(Callback):
 
-    def __init__(self, evaluator, valid_dl):
-        super().__init__()
+    def __init__(self, evaluator, valid_dl, listen_to=CallbackSrcEnum.train):
+        super().__init__(listen_to=listen_to)
         self.evaluator = evaluator
         self.valid_dl = valid_dl
 

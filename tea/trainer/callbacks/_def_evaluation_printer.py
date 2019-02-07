@@ -1,3 +1,4 @@
+from .callback_src_enum import CallbackSrcEnum
 from .callback import Callback
 from ignite.engine import Events
 from tea.utils.commons import islist
@@ -9,8 +10,8 @@ class DefEvaluationPrinter(Callback):
     This is for internal use only
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, listen_to=CallbackSrcEnum.train):
+        super().__init__(listen_to=listen_to)
 
     def events_to_attach(self):
         return [Events.EPOCH_COMPLETED]

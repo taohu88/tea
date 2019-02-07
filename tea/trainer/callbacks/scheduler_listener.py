@@ -1,19 +1,21 @@
+from .callback_src_enum import CallbackSrcEnum
 from .callback import Callback
 from ignite.engine import Events
-from tea.metrics._metric_enum import _MetricEnum
 
 
 class SchedulerListener(Callback):
 
-    def __init__(self, scheduler, metric_name=_MetricEnum.lrs.value,
-                 monitor_metric=None):
-        super().__init__()
+    def __init__(self, scheduler,
+                 monitor_metric=None,
+                 listen_to=CallbackSrcEnum.train,
+                 event=Events.EPOCH_COMPLETED):
+        super().__init__(listen_to)
         self.scheduler = scheduler
-        self.metric_name = metric_name
         self.monitor_metric = monitor_metric
+        self.event = event
 
     def events_to_attach(self):
-        return [Events.EPOCH_COMPLETED]
+        return [self.event]
 
     def epoch_completed(self, engine):
         # epoch in engine starts with 1

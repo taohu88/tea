@@ -2,6 +2,8 @@ import math
 import copy
 
 import torch
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+
 from ignite.engine import Events
 from ignite.metrics import Accuracy, Loss, RunningAverage
 from ignite._utils import convert_tensor
@@ -10,6 +12,7 @@ from ..metrics._metric_enum import _MetricEnum
 from ..metrics.snapshot import Snapshot
 from ..metrics.lr_snapshot import LrSnapshot
 
+from .callbacks.callback_src_enum import CallbackSrcEnum
 from .callbacks._def_batch_printer import DefBatchPrinter
 from .callbacks._def_evaluation_printer import DefEvaluationPrinter
 from .callbacks.record_lr_loss import RecordLrAndLoss
@@ -82,29 +85,23 @@ def build_trainer(cfg, model):
     return BaseLearner(cfg, model)
 
 
-def find_lr(learner, train_dl, start_lr=1.0e-7, end_lr=10, batches=100, path='/tmp/lr_tmp.pch'):
-    learner.save_model(path, with_optimizer=False)
-
-    lr = learner.cfg.get_lr()
-    optimizer = create_optimizer(learner.cfg, learner.model, lr)
-    trainer = create_trainer(learner.cfg, learner.model, optimizer)
-    scheduler = create_lr_finder_scheduler(optimizer, lr, start_lr, end_lr, batches)
-
-    recorder = RecordLrAndLoss(scheduler, batches)
-    recorder.attach(trainer)
-
-    max_epochs = math.ceil(batches/len(train_dl))
-    trainer.run(train_dl, max_epochs=max_epochs)
-    learner.load_model(path)
-
-    return recorder
-
-
-def _attach_callbacks(engine, callbacks):
+def _attach_callbacks(callbacks, trainer, evaluator=None, predictor=None):
     for cb in callbacks:
-        cb.attach(engine)
+        listen_to = cb.listen_to
+        if listen_to == CallbackSrcEnum.train:
+            cb.attach(trainer)
+        elif listen_to == CallbackSrcEnum.validation:
+            cb.attach(evaluator)
+        elif listen_to == CallbackSrcEnum.test:
+            cb.attach(predictor)
+        else: #either
+            def_engine = evaluator if evaluator else trainer
+            cb.attach(def_engine)
 
 
+"""
+by default those callbacks all listen to trainer
+"""
 def _create_def_cbs(cfg, evaluator, train_dl, valid_dl, scheduler):
     cbs = []
     log_freq = cfg.get_log_freq()
@@ -112,12 +109,16 @@ def _create_def_cbs(cfg, evaluator, train_dl, valid_dl, scheduler):
         log_train_loss = DefBatchPrinter(log_freq, len(train_dl))
         cbs.append(log_train_loss)
 
-    if evaluator:
-        cbs.append(RunEvaluator(evaluator, valid_dl))
-        s_listener = SchedulerListener(scheduler, monitor_metric=_MetricEnum.valid_loss.value)
+    if not isinstance(scheduler, ReduceLROnPlateau):
+        metric_name = None
     else:
-        s_listener = SchedulerListener(scheduler, monitor_metric=_MetricEnum.train_loss.value)
-    cbs.append(s_listener)
+        if evaluator:
+            cbs.append(RunEvaluator(evaluator, valid_dl))
+            metric_name = _MetricEnum.valid_loss.value
+        else:
+            metric_name = _MetricEnum.train_loss.value
+
+    cbs.append(SchedulerListener(scheduler, monitor_metric=metric_name))
     cbs.append(DefEvaluationPrinter())
     return cbs
 
@@ -130,17 +131,17 @@ def _create_def_metrics(cfg, trainer, evaluator, opt):
     cbs = []
     if evaluator:
         loss_fn = cfg.get_loss_fn()
-        cbs.append(MetricAdapter(_MetricEnum.valid_loss.value, Loss(loss_fn), intent_engine=evaluator))
+        cbs.append(MetricAdapter(_MetricEnum.valid_loss.value, Loss(loss_fn), listen_to=CallbackSrcEnum.validation))
     else:
         cbs.append(MetricAdapter(_MetricEnum.train_loss.value,
                                  RunningAverage(output_transform=_get_train_loss),
-                                 intent_engine=trainer))
+                                 listen_to=CallbackSrcEnum.train))
 
     cbs.append(MetricAdapter(_MetricEnum.batch_loss.value,
                              Snapshot(output_transform=_get_train_loss,
                                       when=Events.ITERATION_COMPLETED),
-                             intent_engine=trainer))
-    cbs.append(MetricAdapter(_MetricEnum.lrs.value, LrSnapshot(opt), intent_engine=trainer))
+                             CallbackSrcEnum.train))
+    cbs.append(MetricAdapter(_MetricEnum.lrs.value, LrSnapshot(opt), CallbackSrcEnum.train))
     return cbs
 
 
@@ -151,8 +152,7 @@ def _create_metrics_callbacks(cfg, trainer, evaluator, metrics, opt, use_def_pri
 
     if use_def_print:
         cbs += _create_def_metrics(cfg, trainer, evaluator, opt)
-    def_engine = evaluator if evaluator else trainer
-    _attach_callbacks(def_engine, cbs)
+    _attach_callbacks(cbs, trainer, evaluator)
 
 
 def _create_call_backs(cfg, trainer, evaluator, train_dl, valid_dl, scheduler, callbacks, use_def_print):
@@ -163,7 +163,24 @@ def _create_call_backs(cfg, trainer, evaluator, train_dl, valid_dl, scheduler, c
 
     if use_def_print:
         cbs += _create_def_cbs(cfg, evaluator, train_dl, valid_dl, scheduler)
-    _attach_callbacks(trainer, cbs)
+    _attach_callbacks(cbs, trainer, evaluator)
+
+
+def find_lr(learner, train_dl, start_lr=1.0e-7, end_lr=10, batches=100, path='/tmp/lr_tmp.pch'):
+    learner.save_model(path, with_optimizer=False)
+
+    lr = learner.cfg.get_lr()
+    optimizer = create_optimizer(learner.cfg, learner.model, lr)
+    trainer = create_trainer(learner.cfg, learner.model, optimizer)
+    scheduler = create_lr_finder_scheduler(optimizer, lr, start_lr, end_lr, batches)
+    recorder = RecordLrAndLoss(scheduler, batches)
+    recorder.attach(trainer)
+
+    max_epochs = math.ceil(batches/len(train_dl))
+    trainer.run(train_dl, max_epochs=max_epochs)
+    learner.load_model(path)
+
+    return recorder
 
 
 def fit(learner, train_dl, valid_dl=None,
@@ -183,9 +200,7 @@ def fit(learner, train_dl, valid_dl=None,
     max_epochs = learner.cfg.get_epochs()
     trainer.run(train_dl, start_epoch=start_epoch, max_epochs=max_epochs)
 
-#
-# TODO: what is the value of learner in this case
-#
+
 class BaseLearner(object):
     """
     This is just plain supervised learner(trainer/evalulator)
