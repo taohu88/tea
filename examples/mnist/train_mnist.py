@@ -73,7 +73,7 @@ def run(ini_file='mnist.ini',
         # accuracy is a classification metric
         # there is a bug in accuracy, which specific need two inputs
         metrics = {"accuracy": Accuracy(output_transform=lambda x: x[:2])}
-        learner.fit(train_loader, None, metrics=metrics)
+        learner.fit(train_loader, val_loader, metrics=metrics)
 
 
 if __name__ == '__main__':
