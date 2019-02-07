@@ -42,8 +42,7 @@ def run(ini_file='mnist.ini',
         model_cfg='../cfg/lecnn.cfg',
         model_out_dir='./models',
         epochs=2,
-        lr=0.001, batch_sz=256, log_freq=10, use_gpu=True,
-        explore_lr=False):
+        lr=0.001, batch_sz=256, log_freq=10, use_gpu=True):
     # Step 1: parse config
     cfg = AppConfig.from_file(ini_file,
                     data_in_dir=data_in_dir,
@@ -63,16 +62,15 @@ def run(ini_file='mnist.ini',
     learner = build_trainer(cfg, model)
 
     # Step 5: optionally find the best lr
-    if explore_lr:
-        path = learner.cfg.get_model_out_dir()
-        path = Path(path) / 'lr_tmp.pch'
-        lr = explore_lr_and_plot(learner, train_loader, path, start_lr=1.0e-5, end_lr=1.0, batches=100)
-        print(f'Idea lr {lr}')
-        plt.show()
-    else:
+    # TODO move this to integration test
+    path = learner.cfg.get_model_out_dir()
+    path = Path(path) / 'lr_tmp.pch'
+    lr = explore_lr_and_plot(learner, train_loader, path, start_lr=1.0e-5, end_lr=1.0, batches=100)
+    print(f'Idea lr {lr}')
+    # plt.show()
         # accuracy is a classification metric
-        metrics = {"accuracy": Accuracy()}
-        learner.fit(train_loader, val_loader, metrics=metrics)
+    metrics = {"accuracy": Accuracy()}
+    learner.fit(train_loader, val_loader, metrics=metrics)
 
 
 if __name__ == '__main__':
