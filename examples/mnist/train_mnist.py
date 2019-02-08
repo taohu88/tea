@@ -68,7 +68,7 @@ def run(ini_file='mnist.ini',
     lr = explore_lr_and_plot(learner, train_loader, path, start_lr=1.0e-5, end_lr=1.0, batches=100)
     print(f'Idea lr {lr}')
     # plt.show()
-        # accuracy is a classification metric
+    # accuracy is a classification metric
     metrics = {"accuracy": Accuracy()}
     learner.fit(train_loader, val_loader, metrics=metrics)
 
