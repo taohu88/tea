@@ -89,8 +89,11 @@ def build_train_val_test_datasets(cfg, TEXT, emsize):
     # make splits for data
     train, valid, test = datasets.WikiText2.splits(TEXT)
     TEXT.build_vocab(train, vectors=GloVe(name='6B', dim=emsize))
-    train_iter, valid_iter, test_iter = data.BPTTIterator.splits(
-        (train, valid, test), batch_size=cfg.get_batch_sz(), bptt_len=cfg.get_bptt(), device=device)
+    train_iter, valid_iter = data.BPTTIterator.splits(
+        (train, valid), batch_size=cfg.get_batch_sz(), bptt_len=cfg.get_bptt(), device=device)
+
+    test_iter, = data.BPTTIterator.splits(
+        (test,), batch_size=1, bptt_len=cfg.get_bptt(), device=device)
 
     print('Train/valid/test', len(train_iter), len(valid_iter), len(test_iter))
     return train_iter, valid_iter, test_iter
@@ -98,10 +101,12 @@ def build_train_val_test_datasets(cfg, TEXT, emsize):
 
 def word_ids_to_sentence(id_tensor, vocab, join=None):
     """Converts a sequence of word ids to a sentence"""
-    if isinstance(id_tensor, torch.LongTensor):
+    if isinstance(id_tensor, torch.Tensor):
         ids = id_tensor.transpose(0, 1).contiguous().view(-1)
     elif isinstance(id_tensor, np.ndarray):
         ids = id_tensor.transpose().reshape(-1)
+    else:
+        raise Exception(f"Unexcepted type {type(id_tensor)}")
     batch = [vocab.itos[ind] for ind in ids] # denumericalize
     if join is None:
         return batch
@@ -120,27 +125,27 @@ with optional override arguments like the following:
 def run(ini_file='lm.ini',
         model_cfg='../cfg/lm-simple.cfg',
         model_out_dir='./models',
-        epochs=1,
+        epochs=15,
+        emsize=200,
         lr=20.0,
+        clip=0.25,
         batch_sz=40,
         bppt=70,
         log_freq=200,
         use_gpu=True):
     # Step 1: parse config
     cfg = AppConfig.from_file(ini_file,
-                        model_cfg=model_cfg,
-                        model_out_dir=model_out_dir,
-                        epochs=epochs,
-                        lr=lr,
-                        batch_sz=batch_sz,
-                        log_freq=log_freq,
-                        bppt=bppt,
-                        use_gpu=use_gpu)
+                                model_cfg=model_cfg,
+                                model_out_dir=model_out_dir,
+                                epochs=epochs,
+                                emsize=emsize,
+                                lr=lr,
+                                clip=clip,
+                                batch_sz=batch_sz,
+                                log_freq=log_freq,
+                                bppt=bppt,
+                                use_gpu=use_gpu)
     cfg.print()
-
-    emsize = 200
-    clip = cfg.get_clip()
-
     # Step 2: create data sets and loaders
     TEXT = data.Field(lower=True, batch_first=True)
     train_iter, valid_iter, test_iter= build_train_val_test_datasets(cfg, TEXT, emsize)
@@ -204,10 +209,11 @@ def run(ini_file='lm.ini',
     print('=' * 89)
 
     sentence = next(iter(test_iter)); vars(sentence).keys()
-    print('Test sentence', sentence)
+    print(f"Test sentence: {word_ids_to_sentence(sentence.text, TEXT.vocab, join=' ')}")
     pred = model(sentence.text).cpu().data.numpy()
     pred_s = word_ids_to_sentence(np.argmax(pred, axis=2), TEXT.vocab, join=' ')
-    print('Predictions: ', pred_s)
+    print(f'Generated sentence: {pred_s}')
+
 
 if __name__ == '__main__':
     fire.Fire(run)
