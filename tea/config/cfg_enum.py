@@ -18,6 +18,7 @@ class CfgEnum(Enum):
 
     # hypers sections
     epochs = "epochs"
+    vocab_sz = "vocab_sz"
     lr = "lr"
     clip = "clip"
     momentum = "momentum"

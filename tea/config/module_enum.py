@@ -12,6 +12,15 @@ class ModuleEnum(Enum):
     stride = "stride"
     has_pad = "has_pad"
 
+    # valid input for embedding
+    embedding = "embedding"
+
+    # rnn
+    rnn = "rnn"
+    # rnn cell type
+    cell = "cell"
+    nlayers = "nlayers"
+
     # valid input for fc
     quickfcs = "quickfcs"
     fc = "fc"

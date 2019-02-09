@@ -12,6 +12,18 @@ from .cal_sizes import conv2d_out_shape
 from ..modules.core import Conv2dBatchReLU, SmartLinear, SumLayer, ConcatLayer
 
 
+def get_input_size(module_def):
+    sizes_str = module_def[ModuleEnum.size]
+    sizes_str = re.split(r'\s*x\s*', sizes_str)
+    sizes = []
+    for s in sizes_str:
+        if s == "None":
+            sizes.append(None)
+        else:
+            sizes.append(int(s))
+    return tuple(sizes)
+
+
 def has_batch_normalize(module_def):
     return is_true(module_def, ModuleEnum.has_bn)
 
@@ -46,25 +58,32 @@ def make_fc_layer(module_def, in_sizes, layer_num=None, reshape=None, override_s
     prev_out_sz = in_sizes[-1]
     out_sz = override_sz if override_sz else int(module_def[ModuleEnum.size])
     act = make_activation(module_def)
-    # from last layer without batch dimension (Batch, F/C, H, W)
-    in_sz = reduce(lambda x, y: x * y, prev_out_sz[1:])
-    if reshape is None:
-        if is_true(module_def, ModuleEnum.reshape):
-            module_l = [SmartLinear(in_sz, out_sz)]
-        else:
-            module_l = [nn.Linear(in_sz, out_sz)]
+
+    # check whether we need to do reshape
+    start_dim = 0
+    for i in range(len(prev_out_sz)):
+        if prev_out_sz[i] is not None:
+            start_dim = i
+            break
+
+    reshape = reshape if reshape is not None else is_true(module_def, ModuleEnum.reshape)
+    if reshape:
+        # start with start dim such as 1 for (Batch, F/C, H, W)
+        in_sz = reduce(lambda x, y: x * y, prev_out_sz[start_dim:])
+        module_l = [SmartLinear(in_sz, out_sz, end_dim=start_dim)]
+        out_dim = list(prev_out_sz[:start_dim]) + [out_sz]
     else:
-        if reshape:
-            module_l = [SmartLinear(in_sz, out_sz)]
-        else:
-            module_l = [nn.Linear(in_sz, out_sz)]
+        in_sz = prev_out_sz[-1]
+        module_l = [nn.Linear(in_sz, out_sz)]
+        out_dim = list(prev_out_sz)
+        out_dim[-1] = out_sz
 
     if act:
         module_l.append(act)
 
     module = nn.Sequential(*module_l)
     # Batch will be in the first dimension
-    return module, (None, out_sz)
+    return module, tuple(out_dim)
 
 
 def make_conv2d_layer(module_def, in_sizes, layer_num=None, override_sz=None):
@@ -167,7 +186,7 @@ def make_quick_fc(module_def, in_sizes, layer_num=None):
     sizes_str = [x.strip() for x in module_def[ModuleEnum.size].split(',')]
 
     layers = []
-    reshape = True
+    reshape = module_def[ModuleEnum.reshape]
     for v in sizes_str:
         if v == 'D':
             module, prev_out_sz = make_dropout_layer(module_def, [prev_out_sz], layer_num=None)
@@ -183,12 +202,48 @@ def make_quick_fc(module_def, in_sizes, layer_num=None):
     return nn.Sequential(*layers), prev_out_sz
 
 
+def make_embedding_layer(module_def, in_sizes, layer_num=None):
+    prev_out_sz = in_sizes[-1]
+    ninp = prev_out_sz[-1]
+    size = int(module_def[ModuleEnum.size])
+    encoder = nn.Embedding(ninp, size)
+
+    out_sz = list(prev_out_sz)
+    out_sz[-1] = size
+    return encoder, tuple(out_sz)
+
+
+def make_rnn_layers(module_def, in_sizes, layer_num=None):
+    prev_out_sz = in_sizes[-1]
+    ninp = prev_out_sz[-1]
+    cell = module_def[ModuleEnum.cell]
+    nhid = int(module_def[ModuleEnum.size])
+    nlayers = get_int(module_def, ModuleEnum.nlayers, fallback=1)
+    prob = float(0.5) if ModuleEnum.prob not in module_def else float(module_def[ModuleEnum.prob])
+
+    if cell in ['LSTM', 'GRU']:
+        rnn = getattr(nn, cell)(ninp, nhid, nlayers, dropout=prob)
+    else:
+        try:
+            nonlinearity = {'RNN_TANH': 'tanh', 'RNN_RELU': 'relu'}[cell]
+        except KeyError:
+            raise ValueError("""An invalid option for `--model` was supplied,
+                             options are ['LSTM', 'GRU', 'RNN_TANH' or 'RNN_RELU']""")
+        rnn = nn.RNN(ninp, nhid, nlayers, nonlinearity=nonlinearity, dropout=prob)
+
+    out_sz = list(prev_out_sz)
+    out_sz[-1] = nhid
+    return rnn, tuple(out_sz)
+
+
 _BUILDERS_ = {
     ModuleEnum.quickfcs: make_quick_fc,
     ModuleEnum.quickconvs: make_quick_convs,
     ModuleEnum.conv2d: make_conv2d_layer,
     ModuleEnum.fc: make_fc_layer,
     ModuleEnum.dropout: make_dropout_layer,
+    ModuleEnum.embedding: make_embedding_layer,
+    ModuleEnum.rnn: make_rnn_layers,
     ModuleEnum.maxpool: make_maxpool2d_layer,
     ModuleEnum.upsample: make_upsample_layer,
     ModuleEnum.route: make_route_layer,
@@ -200,7 +255,7 @@ def _get_builders():
     return _BUILDERS_
 
 
-def create_module_list(module_defs, input_sz):
+def create_module_list(module_defs, input_sz, context=None):
     """
     Constructs module list of layer blocks from module configuration in module_defs
     """

@@ -2,7 +2,7 @@ import warnings
 import torch.nn as nn
 
 
-def _init_conv(conv, act):
+def _init_conv_params(conv, act):
 
     nonlinearity = 'relu'
     if isinstance(act, nn.ReLU):
@@ -14,7 +14,7 @@ def _init_conv(conv, act):
     nn.init.kaiming_normal_(conv.weight, mode='fan_out', nonlinearity=nonlinearity)
 
 
-def _initialize_weights(model):
+def _init_params(model, initrange=0.01):
     prev_conv = None
     gap_to_act = 0
     for m in model.modules():
@@ -27,14 +27,18 @@ def _initialize_weights(model):
             nn.init.constant_(m.weight, 1)
             nn.init.constant_(m.bias, 0)
         elif isinstance(m, nn.Linear):
-            nn.init.normal_(m.weight, 0, 0.01)
+            nn.init.normal_(m.weight, 0, initrange)
             nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.Embedding):
+            nn.init.normal_(m.weight, 0, initrange)
+        elif isinstance(m, nn.RNNBase):
+            pass
         else:
             if prev_conv:
                 if gap_to_act > 2:
                     raise Exception(f"We can't initialize prev conv layer {prev_conv}")
                 else:
-                    _init_conv(prev_conv, m)
+                    _init_conv_params(prev_conv, m)
                 # clear it up
                 prev_conv = None
                 gap_to_act = 0

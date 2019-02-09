@@ -6,12 +6,6 @@ from .parser import parse_config
 from .loss_fn_map import get_loss_fn_maps
 
 
-
-# def merge_to_section(self, section, a_dict):
-#     for k, v in a_dict.items():
-#         self.set(section, str(k), str(v))
-
-
 def get_int(cfg, key, fallback=0):
     return int(cfg.get(key, fallback))
 
@@ -30,7 +24,11 @@ class AppConfig:
         conf = parse_config(path)
         conf.update(kwargs)
         return cls(conf)
-    
+
+    def update(self, **kwargs):
+        self.conf.update(**kwargs)
+        return self
+
     def print(self):
         print("Configurations:")
         for (k, v) in self.conf.items():

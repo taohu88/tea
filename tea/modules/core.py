@@ -18,11 +18,16 @@ class SmartLinear(nn.Linear):
     r"""Applies a linear transformation to the incoming data: :math:`y = xA^T + b`
         It only automatically set input as (Batch, all-dimension)
     """
-    def __init__(self, in_features, out_features, bias=True):
+    def __init__(self, in_features, out_features, bias=True, end_dim=1):
         super(SmartLinear, self).__init__(in_features, out_features, bias)
+        self.end_dim = end_dim
 
     def forward(self, x):
-        x = x.view(x.size(0), -1)
+        if self.end_dim == 1:
+            x = x.view(x.size(0), -1)
+        else:
+            dims = x.size()[:self.end_dim] + (-1,)
+            x = x.view(*dims)
         return F.linear(x, self.weight, self.bias)
 
 
