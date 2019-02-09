@@ -19,11 +19,13 @@ class CfgEnum(Enum):
     # hypers sections
     epochs = "epochs"
     lr = "lr"
+    clip = "clip"
     momentum = "momentum"
     weight_decay = "weight_decay"
     log_freq = "log_freq"
     use_gpu = "use_gpu"
     batch_sz = "batch_sz"
+    bptt = "bppt"
     train_batch_sz = "train_batch_sz"
     val_batch_sz = "val_batch_sz"
     test_batch_sz = "test_batch_sz"

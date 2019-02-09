@@ -64,6 +64,9 @@ class AppConfig:
     def get_lr(self):
         return float(self.conf[CfgEnum.lr.value])
 
+    def get_clip(self):
+        return float(self.conf[CfgEnum.clip.value])
+
     def get_momentum(self):
         return float(self.conf.get(CfgEnum.momentum.value, 0.0))
 
@@ -75,6 +78,9 @@ class AppConfig:
 
     def get_batch_sz(self):
         return int(self.conf[CfgEnum.batch_sz.value])
+
+    def get_bptt(self):
+        return get_int(self.conf, CfgEnum.bptt.value)
 
     def get_train_batch_sz(self):
         return int(self.conf.get(CfgEnum.train_batch_sz.value, self.get_batch_sz()))
