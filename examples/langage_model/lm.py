@@ -143,13 +143,11 @@ def train(cfg, model, train_iter, epoch, lr, ntokens, loss_fn, clip, log_freq=20
             start_time = time.time()
 
 
-# def export_onnx(path, batch_size, seq_len):
-#     print('The model is also exported in ONNX format at {}'.
-#           format(os.path.realpath(args.onnx_export)))
-#     model.eval()
-#     dummy_input = torch.LongTensor(seq_len * batch_size).zero_().view(-1, batch_size).to(device)
-#     hidden = model.init_hidden(batch_size)
-#     torch.onnx.export(model, (dummy_input, hidden), path)
+def export_onnx(path, model, device, batch_size, seq_len):
+    model.eval()
+    dummy_input = torch.LongTensor(seq_len * batch_size).zero_().view(-1, batch_size).to(device)
+    hidden = model.init_hidden(batch_size)
+    torch.onnx.export(model, (dummy_input, hidden), path)
 
 
 def build_train_val_test_datasets(cfg, TEXT, emsize):
@@ -184,7 +182,7 @@ with optional override arguments like the following:
 def run(ini_file='lm.ini',
         model_cfg='../cfg/lm-simple.cfg',
         model_out_dir='./models',
-        epochs=40,
+        epochs=10,
         lr=20.0,
         batch_sz=40,
         bppt=70,
@@ -270,31 +268,29 @@ def run(ini_file='lm.ini',
     #     # Export the model in ONNX format.
     #     export_onnx(args.onnx_export, batch_size=1, seq_len=args.bptt)
     #
-
+    # def word_ids_to_sentence(id_tensor, vocab, join=None):
+    #     """Converts a sequence of word ids to a sentence"""
+    #     if isinstance(id_tensor, torch.LongTensor):
+    #         ids = id_tensor.transpose(0, 1).contiguous().view(-1)
+    #     elif isinstance(id_tensor, np.ndarray):
+    #         ids = id_tensor.transpose().reshape(-1)
+    #     batch = [vocab.itos[ind] for ind in ids] # denumericalize
+    #     if join is None:
+    #         return batch
+    #     else:
+    #         return join.join(batch)
+    #
+    #
+    # b = next(iter(train_iter)); vars(b).keys()
+    # print('AAA', b)
+    # arrs = model(b.text).cpu().data.numpy()
+    # x = word_ids_to_sentence(np.argmax(arrs, axis=2), TEXT.vocab, join=' ')
+    # print('BBB', x)
 
 if __name__ == '__main__':
     fire.Fire(run)
 
 
-#
-#
-# def word_ids_to_sentence(id_tensor, vocab, join=None):
-#     """Converts a sequence of word ids to a sentence"""
-#     if isinstance(id_tensor, torch.LongTensor):
-#         ids = id_tensor.transpose(0, 1).contiguous().view(-1)
-#     elif isinstance(id_tensor, np.ndarray):
-#         ids = id_tensor.transpose().reshape(-1)
-#     batch = [vocab.itos[ind] for ind in ids] # denumericalize
-#     if join is None:
-#         return batch
-#     else:
-#         return join.join(batch)
-#
-#
-# b = next(iter(train_iter)); vars(b).keys()
-# print('AAA', b)
-# arrs = model(b.text).cpu().data.numpy()
-# x = word_ids_to_sentence(np.argmax(arrs, axis=2), TEXT.vocab, join=' ')
-# print('BBB', x)
+
 
 
