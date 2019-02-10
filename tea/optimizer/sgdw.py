@@ -56,6 +56,13 @@ class SGDW(Optimizer):
 
     def __init__(self, params, lr=required, momentum=0, dampening=0,
                  weight_decay=0, nesterov=False):
+        if lr is not required and lr < 0.0:
+            raise ValueError("Invalid learning rate: {}".format(lr))
+        if momentum < 0.0:
+            raise ValueError("Invalid momentum value: {}".format(momentum))
+        if weight_decay < 0.0:
+            raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
+
         defaults = dict(lr=lr, momentum=momentum, dampening=dampening,
                         weight_decay=weight_decay, nesterov=nesterov)
         if nesterov and (momentum <= 0 or dampening != 0):
@@ -106,11 +113,11 @@ class SGDW(Optimizer):
 
                 # new way decouple of weight decay https://arxiv.org/abs/1711.05101
                 # p = p - wd * lr * p
+                lr = group['lr']
                 if weight_decay != 0:
                     p.data.add_(-weight_decay*lr, p.data)
 
                 # p = p - lr * d_p
-                lr = -group['lr']
                 p.data.add_(-lr, d_p)
                 # net result p = p_old - wd * lr * p_old - lr * d_p
 

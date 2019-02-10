@@ -25,7 +25,6 @@ from .schedulers import create_lr_finder_scheduler, create_scheduler
 from .engine import TeaEngine
 from ..optimizer.adamw import AdamW
 from ..optimizer.sgdw import SGDW
-from torch.optim import SGD
 
 
 def _prepare_batch(batch, device=None, non_blocking=False):
@@ -40,9 +39,8 @@ def _prepare_batch(batch, device=None, non_blocking=False):
 def create_optimizer(cfg, model, lr):
     momentum = cfg.get_momentum()
     weight_decay = cfg.get_weight_decay()
-    # TODO fix a bug in SGDW
     # optimizer = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.99), weight_decay=weight_decay)
-    optimizer = SGD(model.parameters(), lr=lr) #, momentum=momentum, weight_decay=weight_decay)
+    optimizer = SGDW(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
     return optimizer
 
 
