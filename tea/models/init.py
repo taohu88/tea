@@ -10,7 +10,7 @@ def _init_conv_params(conv, act):
     elif isinstance(act, nn.LeakyReLU):
         nonlinearity = 'leaky_relu'
     else:
-        warnings.WarningMessage(f"Don't understand the activation {act}, use relu for init_conv")
+        warnings.warn(f"Don't understand the activation {act}, use relu for init_conv")
     nn.init.kaiming_normal_(conv.weight, mode='fan_out', nonlinearity=nonlinearity)
 
 

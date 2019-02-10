@@ -63,7 +63,7 @@ class AppConfig:
         return float(self.conf[CfgEnum.lr.value])
 
     def get_clip(self):
-        return float(self.conf[CfgEnum.clip.value])
+        return float(self.conf.get(CfgEnum.clip.value, -1))
 
     def get_momentum(self):
         return float(self.conf.get(CfgEnum.momentum.value, 0.0))

@@ -2,6 +2,7 @@ import math
 import copy
 
 import torch
+import torch.nn.functional as F
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from ignite.engine import Events
@@ -23,6 +24,8 @@ from .callbacks.run_evaluator import RunEvaluator
 from .schedulers import create_lr_finder_scheduler, create_scheduler
 from .engine import TeaEngine
 from ..optimizer.adamw import AdamW
+from ..optimizer.sgdw import SGDW
+from torch.optim import SGD
 
 
 def _prepare_batch(batch, device=None, non_blocking=False):
@@ -37,24 +40,33 @@ def _prepare_batch(batch, device=None, non_blocking=False):
 def create_optimizer(cfg, model, lr):
     momentum = cfg.get_momentum()
     weight_decay = cfg.get_weight_decay()
-    optimizer = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.99), weight_decay=weight_decay)
+    # TODO fix a bug in SGDW
+    # optimizer = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.99), weight_decay=weight_decay)
+    optimizer = SGD(model.parameters(), lr=lr) #, momentum=momentum, weight_decay=weight_decay)
     return optimizer
 
 
-def create_trainer(cfg, model, optimizer):
+def create_trainer(cfg, model, optimizer, loss_fn):
     device = cfg.get_device()
-    loss_fn = cfg.get_loss_fn()
+    clip = cfg.get_clip()
 
     if device:
         model.to(device)
 
     def _update(engine, batch):
         model.train()
+        model.reset_context()
         optimizer.zero_grad()
+        # model.zero_grad()
         x, y = _prepare_batch(batch, device=device, non_blocking=False)
         y_pred = model(x)
         loss = loss_fn(y_pred, y)
         loss.backward()
+
+        # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
+        if clip > 0:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), clip)
+
         optimizer.step()
         return y_pred, y, loss.item()
 
@@ -127,10 +139,9 @@ def _get_train_loss(output):
     return output[2]
 
 
-def _create_def_metrics(cfg, trainer, evaluator, opt):
+def _create_def_metrics(evaluator, opt, loss_fn):
     cbs = []
     if evaluator:
-        loss_fn = cfg.get_loss_fn()
         cbs.append(MetricAdapter(_MetricEnum.valid_loss.value, Loss(loss_fn), listen_to=CallbackSrcEnum.validation))
     else:
         cbs.append(MetricAdapter(_MetricEnum.train_loss.value,
@@ -145,13 +156,13 @@ def _create_def_metrics(cfg, trainer, evaluator, opt):
     return cbs
 
 
-def _create_metrics_callbacks(cfg, trainer, evaluator, metrics, opt, use_def_print):
+def _create_metrics_callbacks(trainer, evaluator, loss_fn, metrics, opt, use_def_print):
     cbs = []
     for name, m in metrics.items():
         cbs.append(MetricAdapter(name, m))
 
     if use_def_print:
-        cbs += _create_def_metrics(cfg, trainer, evaluator, opt)
+        cbs += _create_def_metrics(evaluator, opt, loss_fn)
     _attach_callbacks(cbs, trainer, evaluator)
 
 
@@ -166,12 +177,14 @@ def _create_call_backs(cfg, trainer, evaluator, train_dl, valid_dl, scheduler, c
     _attach_callbacks(cbs, trainer, evaluator)
 
 
-def find_lr(learner, train_dl, start_lr=1.0e-7, end_lr=10, batches=100, path='/tmp/lr_tmp.pch'):
+def find_lr(learner, train_dl,
+            loss_fn=F.cross_entropy,
+            start_lr=1.0e-7, end_lr=10, batches=100, path='/tmp/lr_tmp.pch'):
     learner.save_model(path, with_optimizer=False)
 
     lr = learner.cfg.get_lr()
     optimizer = create_optimizer(learner.cfg, learner.model, lr)
-    trainer = create_trainer(learner.cfg, learner.model, optimizer)
+    trainer = create_trainer(learner.cfg, learner.model, optimizer, loss_fn)
     scheduler = create_lr_finder_scheduler(optimizer, lr, start_lr, end_lr, batches)
     recorder = RecordLrAndLoss(scheduler, batches)
     recorder.attach(trainer)
@@ -184,17 +197,18 @@ def find_lr(learner, train_dl, start_lr=1.0e-7, end_lr=10, batches=100, path='/t
 
 
 def fit(learner, train_dl, valid_dl=None,
+        loss_fn=F.cross_entropy,
         start_epoch=0,
         metrics={},
         callbacks=None,
         use_def_print=True):
     lr = learner.cfg.get_lr()
     optimizer = create_optimizer(learner.cfg, learner.model, lr)
-    trainer = create_trainer(learner.cfg, learner.model, optimizer)
+    trainer = create_trainer(learner.cfg, learner.model, optimizer, loss_fn)
     scheduler = create_scheduler(learner.cfg, optimizer)
     evaluator = create_evaluator(learner.cfg, learner.model) if valid_dl else None
 
-    _create_metrics_callbacks(learner.cfg, trainer, evaluator, metrics, optimizer, use_def_print)
+    _create_metrics_callbacks(trainer, evaluator, loss_fn, metrics, optimizer, use_def_print)
     _create_call_backs(learner.cfg, trainer, evaluator, train_dl, valid_dl, scheduler, callbacks, use_def_print)
 
     max_epochs = learner.cfg.get_epochs()
