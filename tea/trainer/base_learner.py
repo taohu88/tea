@@ -39,8 +39,8 @@ def _prepare_batch(batch, device=None, non_blocking=False):
 def create_optimizer(cfg, model, lr):
     momentum = cfg.get_momentum()
     weight_decay = cfg.get_weight_decay()
-    # optimizer = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.99), weight_decay=weight_decay)
-    optimizer = SGDW(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
+    optimizer = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.99), weight_decay=weight_decay)
+    # optimizer = SGDW(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
     return optimizer
 
 
@@ -176,11 +176,13 @@ def _create_call_backs(cfg, trainer, evaluator, train_dl, valid_dl, scheduler, c
 
 
 def find_lr(learner, train_dl,
-            loss_fn=F.cross_entropy,
+            loss_fn=None,
             start_lr=1.0e-7, end_lr=10, batches=100, path='/tmp/lr_tmp.pch'):
     learner.save_model(path, with_optimizer=False)
 
     lr = learner.cfg.get_lr()
+    loss_fn = loss_fn if loss_fn else learner.cfg.get_loss_fn()
+
     optimizer = create_optimizer(learner.cfg, learner.model, lr)
     trainer = create_trainer(learner.cfg, learner.model, optimizer, loss_fn)
     scheduler = create_lr_finder_scheduler(optimizer, lr, start_lr, end_lr, batches)
@@ -195,12 +197,14 @@ def find_lr(learner, train_dl,
 
 
 def fit(learner, train_dl, valid_dl=None,
-        loss_fn=F.cross_entropy,
+        loss_fn=None,
         start_epoch=0,
         metrics={},
         callbacks=None,
         use_def_print=True):
     lr = learner.cfg.get_lr()
+    loss_fn = loss_fn if loss_fn else learner.cfg.get_loss_fn()
+
     optimizer = create_optimizer(learner.cfg, learner.model, lr)
     trainer = create_trainer(learner.cfg, learner.model, optimizer, loss_fn)
     scheduler = create_scheduler(learner.cfg, optimizer)

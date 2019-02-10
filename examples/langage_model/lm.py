@@ -131,7 +131,8 @@ def run(ini_file='lm.ini',
         model_out_dir='./models',
         epochs=15,
         emsize=200,
-        lr=20.0,
+#        lr=20.0,
+        lr=1e-3,
         clip=0.25,
         batch_sz=40,
         bppt=70,
@@ -173,7 +174,7 @@ def run(ini_file='lm.ini',
     if explore_lr:
         path = learner.cfg.get_model_out_dir()
         path = Path(path) / 'lr_tmp.pch'
-        lr = explore_lr_and_plot(learner, train_ds, path, start_lr=1.0e-4, end_lr=100.0, batches=100)
+        lr = explore_lr_and_plot(learner, train_ds, path, loss_fn=loss_fn, start_lr=1.0e-4, end_lr=100.0, batches=100)
         print(f'Idea lr {lr}')
         plt.show()
     else:
