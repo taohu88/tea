@@ -46,6 +46,9 @@ class AppConfig:
             os.makedirs(model_out_dir)
         return model_out_dir
 
+    def get_optim(self):
+        return self.conf.get(CfgEnum.optim.value, "AdamW")
+
     def get_epochs(self):
         return int(self.conf[CfgEnum.epochs.value])
 

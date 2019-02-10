@@ -16,6 +16,8 @@ class CfgEnum(Enum):
     model_out_dir = "model_out_dir"
     loss = "loss"
 
+    optim = "optim"
+
     # hypers sections
     epochs = "epochs"
     vocab_sz = "vocab_sz"

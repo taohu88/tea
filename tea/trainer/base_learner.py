@@ -35,12 +35,18 @@ def _prepare_batch(batch, device=None, non_blocking=False):
             convert_tensor(y, device=device, non_blocking=non_blocking))
 
 
-# TODO fix this, not just use Adam
 def create_optimizer(cfg, model, lr):
-    momentum = cfg.get_momentum()
+    optim_str = cfg.get_optim()
+
     weight_decay = cfg.get_weight_decay()
-    optimizer = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.99), weight_decay=weight_decay)
-    # optimizer = SGDW(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
+    if optim_str == "AdamW":
+        optimizer = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.99), weight_decay=weight_decay)
+    elif optim_str == "SGDW":
+        momentum = cfg.get_momentum()
+        optimizer = SGDW(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
+    else:
+        raise Exception(f"Unexcept optimization {optim_str}")
+
     return optimizer
 
 
