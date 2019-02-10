@@ -1,4 +1,5 @@
-import fire
+import unittest
+
 from pathlib import Path
 from torchvision import datasets
 
@@ -9,7 +10,6 @@ import tea.data.data_loader_factory as DLFactory
 import tea.models.factory as MFactory
 from tea.trainer.base_learner import build_trainer
 from tea.trainer.helper import explore_lr_and_plot
-import matplotlib.pyplot as plt
 
 
 def build_train_val_datasets(cfg):
@@ -38,10 +38,10 @@ with optional override arguments like the following:
     epochs, lr, batch etc
 """
 def run(ini_file='mnist.ini',
-        data_in_dir='../../../dataset',
-        model_cfg='../cfg/lecnn.cfg',
+        data_in_dir='./dataset',
+        model_cfg='./lecnn.cfg',
         model_out_dir='./models',
-        epochs=2,
+        epochs=5,
         lr=0.001, batch_sz=256, log_freq=10, use_gpu=True):
     # Step 1: parse config
     cfg = AppConfig.from_file(ini_file,
@@ -73,6 +73,9 @@ def run(ini_file='mnist.ini',
     learner.fit(train_loader, val_loader, metrics=metrics)
 
 
-if __name__ == '__main__':
-    fire.Fire(run)
+class Tester(unittest.TestCase):
+
+    def test_mnist(self):
+        run()
+
 
