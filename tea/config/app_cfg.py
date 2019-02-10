@@ -34,6 +34,9 @@ class AppConfig:
         for (k, v) in self.conf.items():
             print(f"\t{k} = {v}")
 
+    def get_str(self, key, fallback=None):
+        return self.conf.get(key, fallback)
+
     def get_data_in_dir(self):
         return self.conf.get(CfgEnum.data_in_dir.value)
 

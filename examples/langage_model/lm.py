@@ -129,7 +129,7 @@ with optional override arguments like the following:
 def run(ini_file='lm.ini',
         model_cfg='../cfg/lm-simple.cfg',
         model_out_dir='./models',
-        epochs=15,
+        epochs=30,
         emsize=200,
 #        lr=20.0,
         lr=1e-3,

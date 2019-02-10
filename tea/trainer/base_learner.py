@@ -12,6 +12,7 @@ from ignite._utils import convert_tensor
 from ..metrics._metric_enum import _MetricEnum
 from ..metrics.snapshot import Snapshot
 from ..metrics.lr_snapshot import LrSnapshot
+from ..config.cfg_enum import CfgEnum
 
 from .callbacks.callback_src_enum import CallbackSrcEnum
 from .callbacks._def_batch_printer import DefBatchPrinter
@@ -40,7 +41,10 @@ def create_optimizer(cfg, model, lr):
 
     weight_decay = cfg.get_weight_decay()
     if optim_str == "AdamW":
-        optimizer = AdamW(model.parameters(), lr=lr, betas=(0.9, 0.99), weight_decay=weight_decay)
+        betas_str = cfg.get_str(CfgEnum.betas.value, "0.9, 0.99")
+        betas_str = betas_str.split(",")
+        betas = tuple(float(b) for b in betas_str)
+        optimizer = AdamW(model.parameters(), lr=lr, betas=betas, weight_decay=weight_decay)
     elif optim_str == "SGDW":
         momentum = cfg.get_momentum()
         optimizer = SGDW(model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)

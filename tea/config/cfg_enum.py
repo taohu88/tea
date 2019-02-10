@@ -17,6 +17,7 @@ class CfgEnum(Enum):
     loss = "loss"
 
     optim = "optim"
+    betas = "betas"
 
     # hypers sections
     epochs = "epochs"
