@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from tea.config.app_cfg import AppConfig
 import tea.models.factory as MFactory
 from tea.data.text_loader import TextLoader
-from tea.trainer.base_learner import build_trainer
+from tea.trainer.basic_learner import build_trainer
 from tea.trainer.helper import explore_lr_and_plot
 import matplotlib.pyplot as plt
 
