@@ -1,4 +1,4 @@
-import unittest
+import fire
 
 from pathlib import Path
 from torchvision import datasets
@@ -37,7 +37,7 @@ with optional override arguments like the following:
     model_out_dir
     epochs, lr, batch etc
 """
-def run(ini_file='mnist.ini',
+def run(ini_file='./mnist.ini',
         data_in_dir='./dataset',
         model_cfg='./lecnn.cfg',
         model_out_dir='./models',
@@ -62,7 +62,6 @@ def run(ini_file='mnist.ini',
     learner = build_trainer(cfg, model)
 
     # Step 5: optionally find the best lr
-    # TODO move this to integration test
     path = learner.cfg.get_model_out_dir()
     path = Path(path) / 'lr_tmp.pch'
     lr = explore_lr_and_plot(learner, train_loader, path, start_lr=1.0e-5, end_lr=1.0, batches=100)
@@ -73,9 +72,7 @@ def run(ini_file='mnist.ini',
     learner.fit(train_loader, val_loader, metrics=metrics)
 
 
-class Tester(unittest.TestCase):
-
-    def test_mnist(self):
-        run()
+if __name__ == '__main__':
+    fire.Fire(run)
 
 
