@@ -19,6 +19,22 @@ def self_or_first(x):
     return x
 
 
+def discouont_rewards(raw_rewards, gamma):
+    """
+    Discount rewards in episode
+    :param raw_rewards: raw rewards
+    :param gamma: discount rate
+    :return: discounted rewards
+    """
+    R = 0
+    rewards = []
+    for r in reversed(raw_rewards):
+        R = r + gamma * R
+        rewards.append(R)
+    rewards = rewards[::-1]
+    return rewards
+
+
 def detach_all(x):
     """
     detach all tensors from h

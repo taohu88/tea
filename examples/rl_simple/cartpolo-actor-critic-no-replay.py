@@ -4,56 +4,107 @@ import gym
 import fire
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Categorical
 
 from tea.config.app_cfg import AppConfig
 import tea.models.factory as MFactory
+from tea.utils.commons import islist, discouont_rewards
 
 
-class Policy(nn.Module):
-    def __init__(self):
-        super(Policy, self).__init__()
-        self.affine1 = nn.Linear(4, 128)
-        self.action_head = nn.Linear(128, 2)
-        self.value_head = nn.Linear(128, 1)
+class OnPolicyLearner():
 
-    def forward(self, x):
-        x = F.relu(self.affine1(x))
-        action_scores = self.action_head(x)
-        state_values = self.value_head(x)
-        return F.softmax(action_scores, dim=-1), state_values
+    def __init__(self, cfg, env, policy, lr):
+        self.cfg = cfg
+        self.env = env
+        self.policy = policy
+        # TODO fix create only adam optimizer
+        self.optimizer = optim.Adam(policy.parameters(), lr=lr)
 
 
-def select_action(policy, state):
-    state = torch.from_numpy(state[np.newaxis,:]).float()
-    probs, state_value = policy(state)
-    m = Categorical(probs)
-    action = m.sample()
-    return action.item(), m.log_prob(action), state_value
+    @staticmethod
+    def select_action(policy, state):
+        if isinstance(state, np.ndarray):
+            if len(state.shape) < 2:
+                # make it look like bactch
+                state = state[np.newaxis, :]
+            state = torch.from_numpy(state).float()
+        elif isinstance(state, torch.tensor):
+            if len(state.size()) < 2:
+                state = state[None,...]
+        else:
+            raise Exception(f"Unexcepted type of {type(state)}")
 
+        output = policy(state)
+        if islist(output):
+            probs = output[0]
+        else:
+            probs = output
+        m = Categorical(probs)
+        action = m.sample()
+        return action.item(), m.log_prob(action), output[1:]
 
-def train_after_episode(actions_, rewards_, optimizer, gamma, eps):
-    R = 0
-    saved_actions = actions_
-    policy_losses = []
-    value_losses = []
-    rewards = []
-    for r in rewards_[::-1]:
-        R = r + gamma * R
-        rewards.insert(0, R)
-    rewards = torch.tensor(rewards)
-    rewards = (rewards - rewards.mean()) / (rewards.std() + eps)
-    for (log_prob, value), r in zip(saved_actions, rewards):
-        reward = r - value.item()
-        policy_losses.append(-log_prob * reward)
-        value_losses.append(F.smooth_l1_loss(value, torch.tensor([r])))
-    optimizer.zero_grad()
-    loss = torch.stack(policy_losses).sum() + torch.stack(value_losses).sum()
-    loss.backward()
-    optimizer.step()
+    @staticmethod
+    def train_after_episode(saved_actions, raw_rewards, optimizer, gamma, eps):
+        policy_losses = []
+        value_losses = []
+
+        rewards = torch.tensor(discouont_rewards(raw_rewards, gamma))
+        rewards = (rewards - rewards.mean()) / (rewards.std() + eps)
+        for (log_prob, value), r in zip(saved_actions, rewards):
+            if len(value) > 0:
+                value = value[0]
+                reward = r - value.item()
+                value_losses.append(F.smooth_l1_loss(value, torch.tensor([r])))
+            policy_losses.append(-log_prob * reward)
+        optimizer.zero_grad()
+        if value_losses:
+            loss = torch.stack(policy_losses).sum() + torch.stack(value_losses).sum()
+        else:
+            loss = torch.stack(policy_losses).sum()
+        loss.backward()
+        optimizer.step()
+
+    def run_one_episode(self, policy, max_run_per_episode):
+        state = self.env.reset()
+        rewards = []
+        actions = []
+        # run one episode
+        for run_len in range(max_run_per_episode):
+            action, log_prob, state_value = self.select_action(policy, state)
+            state, reward, done, _ = self.env.step(action)
+            # if self.render:
+            #     self.env.render()
+            rewards.append(reward)
+            if len(state_value) > 0:
+                actions.append((log_prob, state_value))
+            else:
+                actions.append(log_prob)
+            if done:
+                break
+        return actions, rewards, run_len
+
+    def fit(self, lr, max_episodes, gamma=0.99, reward_threshold=195, max_run_per_episode=10000):
+        log_freq = self.cfg.get_log_freq()
+        device = self.cfg.get_device()
+        policy = self.policy.to(device)
+        eps = self.cfg.get_eps()
+
+        running_reward = reward_threshold // 20
+        for i_episode in range(max_episodes):
+            actions, rewards, run_len = self.run_one_episode(policy, max_run_per_episode)
+            # train after one episode
+            running_reward = running_reward * 0.99 + run_len * 0.01
+            self.train_after_episode(actions, rewards, self.optimizer, gamma, eps)
+
+            if i_episode % log_freq == 0:
+                print('Episode {}\tLast length: {:4d}\tAverage length: {:.2f}'.format(
+                    i_episode, run_len, running_reward))
+            if running_reward > reward_threshold:
+                print("Solved! Running reward is now {:.3f} and "
+                      "the last episode runs to {:4d} time steps!".format(running_reward, run_len))
+                break
 
 
 def create_env():
@@ -73,7 +124,7 @@ def run(ini_file='rl-actor-critic.ini',
         gamma=0.99,
         lr=1e-2,
         log_freq=10,
-        render=True,
+        render=False,
         use_gpu=True,
         explore_lr=False):
     # Step 1: parse config
@@ -85,48 +136,29 @@ def run(ini_file='rl-actor-critic.ini',
                                 log_freq=log_freq,
                                 render=render,
                                 use_gpu=use_gpu)
-    cfg.print()
     # Step 2: create env
     env = create_env()
     print(f"Env is {env}")
 
+    eps = np.finfo(np.float32).eps.item()
+    cfg.update(eps=eps)
+    cfg.print()
+
     # Step 3: create model
     policy = MFactory.create_model(cfg)
     print(policy)
-    optimizer = optim.Adam(policy.parameters(), lr=lr)
-    eps = np.finfo(np.float32).eps.item()
 
+    max_episodes = 10000
     reward_threshold = env.spec.reward_threshold
-    running_reward = 10
-    max_run_len = 10000
-    print(f"Reward threshold {reward_threshold} gamma is {gamma} eps {eps}")
+    max_run_per_episode = 10000
+    print(f"Reward threshold {reward_threshold} gamma is {gamma}")
 
-    for i_episode in count(1):
-        state = env.reset()
-        rewards = []
-        actions = []
-        # run one episode
-        for run_len in range(max_run_len):  # Don't infinite loop while learning
-            action, log_prob, state_value = select_action(policy, state)
-            state, reward, done, _ = env.step(action)
-            if render:
-                env.render()
-            rewards.append(reward)
-            actions.append((log_prob, state_value))
-            if done:
-                break
-
-        # train after one episode
-        running_reward = running_reward * 0.99 + run_len * 0.01
-        train_after_episode(actions, rewards, optimizer, gamma, eps)
-
-        if i_episode % log_freq == 0:
-            print('Episode {}\tLast length: {:4d}\tAverage length: {:.2f}'.format(
-                i_episode, run_len, running_reward))
-        if running_reward > reward_threshold:
-            print("Solved! Running reward is now {:.3f} and "
-                  "the last episode runs to {:4d} time steps!".format(running_reward, run_len))
-            break
+    # Step 4: create learner
+    learner = OnPolicyLearner(cfg, env, policy, lr)
+    learner.fit(lr, max_episodes=max_episodes,
+                    gamma=gamma,
+                    reward_threshold=reward_threshold,
+                    max_run_per_episode=max_run_per_episode)
 
 
 if __name__ == '__main__':

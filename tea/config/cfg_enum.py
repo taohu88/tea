@@ -34,3 +34,5 @@ class CfgEnum(Enum):
     val_batch_sz = "val_batch_sz"
     test_batch_sz = "test_batch_sz"
     num_workers = "num_workers"
+
+    eps = "eps"

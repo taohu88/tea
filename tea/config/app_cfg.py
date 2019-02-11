@@ -68,6 +68,9 @@ class AppConfig:
     def get_lr(self):
         return float(self.conf[CfgEnum.lr.value])
 
+    def get_eps(self):
+        return float(self.conf[CfgEnum.eps.value])
+
     def get_clip(self):
         return float(self.conf.get(CfgEnum.clip.value, -1))
 
