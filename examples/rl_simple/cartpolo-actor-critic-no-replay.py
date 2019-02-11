@@ -46,13 +46,13 @@ class OnPolicyLearner():
         return action.item(), m.log_prob(action), output[1:]
 
     @staticmethod
-    def train_after_episode(saved_actions, raw_rewards, optimizer, gamma, eps):
+    def train_after_episode(policy_outs, raw_rewards, optimizer, gamma, eps):
         policy_losses = []
         value_losses = []
 
         rewards = torch.tensor(discouont_rewards(raw_rewards, gamma))
         rewards = (rewards - rewards.mean()) / (rewards.std() + eps)
-        for (log_prob, value), r in zip(saved_actions, rewards):
+        for (log_prob, value), r in zip(policy_outs, rewards):
             if len(value) > 0:
                 value = value[0]
                 reward = r - value.item()
@@ -66,10 +66,11 @@ class OnPolicyLearner():
         loss.backward()
         optimizer.step()
 
+    # This is like stream online corresponding batch in other use cases
     def run_one_episode(self, policy, max_run_per_episode):
         state = self.env.reset()
         rewards = []
-        actions = []
+        policy_outs = []
         # run one episode
         for run_len in range(max_run_per_episode):
             action, log_prob, state_value = self.select_action(policy, state)
@@ -78,12 +79,12 @@ class OnPolicyLearner():
             #     self.env.render()
             rewards.append(reward)
             if len(state_value) > 0:
-                actions.append((log_prob, state_value))
+                policy_outs.append((log_prob, state_value))
             else:
-                actions.append(log_prob)
+                policy_outs.append(log_prob)
             if done:
                 break
-        return actions, rewards, run_len
+        return policy_outs, rewards, run_len
 
     def fit(self, lr, max_episodes, gamma=0.99, reward_threshold=195, max_run_per_episode=10000):
         log_freq = self.cfg.get_log_freq()
