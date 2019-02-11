@@ -1,7 +1,5 @@
 from itertools import count
-from collections import namedtuple
 import numpy as np
-import argparse
 import gym
 import fire
 
@@ -75,7 +73,7 @@ def run(ini_file='rl-actor-critic.ini',
         gamma=0.99,
         lr=1e-2,
         log_freq=10,
-        render=False,
+        render=True,
         use_gpu=True,
         explore_lr=False):
     # Step 1: parse config
