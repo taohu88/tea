@@ -2,6 +2,8 @@ from enum import Enum
 
 
 class ModuleEnum(Enum):
+    # a flag for out
+    out="out"
     type = "type"
     # valid for input
     size = "size"
@@ -40,8 +42,9 @@ class ModuleEnum(Enum):
     # valid enums for route
     route = "route"
     layers = "layers"
+    dim = "dim"
 
-    shortcut = "shortcut"
+    sum = "sum"
     from_layer = "from"
 
     # valid enums for quickconvs
@@ -61,3 +64,6 @@ class ModuleEnum(Enum):
     leaky = "leaky"
     linear = "linear"
     leaky_slope = "leaky_slope"
+    softmax = "softmax"
+    log_softmax = "log_softmax"
+

@@ -40,6 +40,10 @@ def make_activation(module_def):
         if ModuleEnum.leaky_slope in module_def:
             leaky_slope = float(module_def[ModuleEnum.leaky_slope])
         act = nn.LeakyReLU(leaky_slope, inplace=True)
+    elif act_name == ModuleEnum.softmax.value:
+        act = nn.Softmax(-1)
+    elif act_name == ModuleEnum.log_softmax.value:
+        act = nn.LogSoftmax(-1)
     elif act_name == ModuleEnum.linear.value:
         act = None
     else:
@@ -125,11 +129,16 @@ def make_upsample_layer(module_def, in_sizes, layer_num=None):
 
 
 def make_route_layer(module_def, in_sizes, layer_num=None):
-    prev_out_sz = in_sizes[-1]
+    # default is dim 1
+    dim = get_int(module_def, ModuleEnum.dim, 1)
     layers = [int(x) for x in module_def[ModuleEnum.layers].split(",")]
-    filters = sum([in_sizes[layer_i][1] for layer_i in layers])
-    module = ConcatLayer(layers)
-    out_sz = [None, filters] + list(prev_out_sz[2:])
+    concat_sz = sum([in_sizes[layer_i][dim] for layer_i in layers])
+    module = ConcatLayer(layers, dim)
+
+    # pick up any layer from concated layers
+    out_sz = list(in_sizes[layers[0]])
+    # change the dim to concat_sz
+    out_sz[dim] = concat_sz
     return module, tuple(out_sz)
 
 
@@ -247,7 +256,7 @@ _BUILDERS_ = {
     ModuleEnum.maxpool: make_maxpool2d_layer,
     ModuleEnum.upsample: make_upsample_layer,
     ModuleEnum.route: make_route_layer,
-    ModuleEnum.shortcut: make_sum_layer,
+    ModuleEnum.sum: make_sum_layer,
 }
 
 
@@ -255,15 +264,21 @@ def _get_builders():
     return _BUILDERS_
 
 
-def create_module_list(module_defs, input_sz, context=None):
+def create_module_list(module_defs, input_sz):
     """
     Constructs module list of layer blocks from module configuration in module_defs
     """
     output_sizes = [input_sz]
     module_list = nn.ModuleList()
+    outputs = []
     builders = _get_builders()
     for i, module_def in enumerate(module_defs):
-        type_name = re.split(r'-|_', module_def[ModuleEnum.type])[0]
+        type_strs = re.split(r'\s*:\s*', module_def[ModuleEnum.type])
+        if len(type_strs) > 1:
+            if type_strs[-1] == ModuleEnum.out.value:
+                # add layer i to output
+                outputs.append(i)
+        type_name = re.split(r'-|_', type_strs[0])[0]
         creat_fun = builders[ModuleEnum(type_name)]
         module, out_sz = creat_fun(module_def, output_sizes, i)
 
@@ -272,4 +287,4 @@ def create_module_list(module_defs, input_sz, context=None):
         output_sizes.append(out_sz)
         print(f"Layer {i} {module_def[ModuleEnum.type]} in_sz {output_sizes[-2][1:]} out_sz {output_sizes[-1][1:]}")
 
-    return module_list
+    return module_list, outputs

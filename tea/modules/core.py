@@ -151,10 +151,15 @@ class ConcatLayer(nn.Module):
     It is used to implement route in darknet
     """
 
-    def __init__(self, froms):
+    def __init__(self, froms, dim=1):
         super(ConcatLayer, self).__init__()
         self.froms = froms
+        self.dim = dim
 
     def forward(self, prev_outputs):
-        x = torch.cat([prev_outputs[i] for i in self.froms], 1)
+        x = torch.cat([prev_outputs[i] for i in self.froms], self.dim)
         return x
+
+    def __repr__(self):
+        s = '{name}({froms}, {dim})'
+        return s.format(name=self.__class__.__name__, froms=self.froms, dim=self.dim)

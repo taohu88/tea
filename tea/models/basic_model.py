@@ -8,9 +8,15 @@ from .init import _init_params
 class BasicModel(nn.Module):
     """Basic model for many use cases such as classification"""
 
-    def __init__(self, module_list, init_params=True):
+    def __init__(self, module_list, outputs, init_params=True):
         super(BasicModel, self).__init__()
         self.module_list = module_list
+        # we don't need to put last lay as output
+        # by default it will be
+        if len(outputs) < 1 or (outputs[-1] != len(module_list) - 1):
+            self.outputs = outputs
+        else:
+            self.outputs = outputs[:-1]
 
         if init_params:
             self.init_params()
@@ -38,7 +44,10 @@ class BasicModel(nn.Module):
         self.context = None
 
     def forward(self, x):
+        outs = []
         layer_outputs = []
+        j = 0
+        sz = len(self.outputs)
         for i, module in enumerate(self.module_list):
             if isinstance(module, nn.RNNBase):
                 x, self.context = module(x, self.context)
@@ -47,5 +56,16 @@ class BasicModel(nn.Module):
             else:
                 x = module(x)
             layer_outputs.append(x)
-        # return last as an output
-        return x
+            if j < sz:
+                if i == self.outputs[j]:
+                    outs.append(x)
+                    j += 1
+                elif i < self.outputs[j]:
+                    pass
+                else:
+                    raise Exception(f"How can we skip an output layer {j}?")
+        if len(outs) < 1:
+            return x
+        # append last x
+        outs.append(x)
+        return outs
