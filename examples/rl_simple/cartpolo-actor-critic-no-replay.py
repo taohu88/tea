@@ -46,7 +46,7 @@ class OnPolicyLearner():
         return action.item(), m.log_prob(action), output[1:]
 
     @staticmethod
-    def train_after_episode(policy_outs, raw_rewards, optimizer, gamma, eps):
+    def backward_one_episode(policy_outs, raw_rewards, optimizer, gamma, eps):
         policy_losses = []
         value_losses = []
 
@@ -67,7 +67,7 @@ class OnPolicyLearner():
         optimizer.step()
 
     # This is like stream online corresponding batch in other use cases
-    def run_one_episode(self, policy, max_run_per_episode):
+    def forwad_one_episode(self, policy, max_run_per_episode):
         state = self.env.reset()
         rewards = []
         policy_outs = []
@@ -94,10 +94,10 @@ class OnPolicyLearner():
 
         running_reward = reward_threshold // 20
         for i_episode in range(max_episodes):
-            actions, rewards, run_len = self.run_one_episode(policy, max_run_per_episode)
+            actions, rewards, run_len = self.forwad_one_episode(policy, max_run_per_episode)
             # train after one episode
             running_reward = running_reward * 0.99 + run_len * 0.01
-            self.train_after_episode(actions, rewards, self.optimizer, gamma, eps)
+            self.backward_one_episode(actions, rewards, self.optimizer, gamma, eps)
 
             if i_episode % log_freq == 0:
                 print('Episode {}\tLast length: {:4d}\tAverage length: {:.2f}'.format(
