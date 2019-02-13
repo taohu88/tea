@@ -80,7 +80,7 @@ model = DQN(env.observation_space.shape[0], env.action_space.n)
 
 model = model.to(device)
 
-optimizer = optim.Adam(model.parameters())
+optimizer = optim.Adam(model.parameters(), lr=5e-4)
 
 replay_buffer = ReplayBuffer(1000)
 
@@ -88,8 +88,8 @@ replay_buffer = ReplayBuffer(1000)
 def compute_td_loss(batch_size):
     state, action, reward, next_state, done = replay_buffer.sample(batch_size)
 
-    state = torch.FloatTensor(np.float32(state)).to(device)
-    next_state = torch.FloatTensor(np.float32(next_state)).to(device)
+    state = torch.FloatTensor(state).to(device)
+    next_state = torch.FloatTensor(next_state).to(device)
     action = torch.LongTensor(action).to(device)
     reward = torch.FloatTensor(reward).to(device)
     done = torch.FloatTensor(done).to(device)
@@ -123,7 +123,7 @@ def compute_td_loss(batch_size):
 #     plt.show()
 
 num_frames = 10000
-batch_size = 32
+batch_size = 64
 gamma = 0.99
 
 losses = []
