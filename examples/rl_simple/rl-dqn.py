@@ -6,7 +6,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.autograd as autograd
 import torch.nn.functional as F
 
 import matplotlib.pyplot as plt
@@ -30,9 +29,6 @@ class ReplayBuffer(object):
 
     def __len__(self):
         return len(self.buffer)
-
-
-
 
 
 USE_CUDA = torch.cuda.is_available()
