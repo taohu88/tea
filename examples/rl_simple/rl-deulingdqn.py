@@ -23,14 +23,11 @@ def train_batch(current_model, target_model, batches, optimizer, gamma=0.99, dev
 
     q_values = current_model(state)
     with torch.no_grad():
-        next_q_values = current_model(next_state).detach()
-    with torch.no_grad():
-        next_q_state_values = target_model(next_state).detach()
+        next_q_values = target_model(next_state).detach()
 
-    q_value = q_values.gather(1, action.unsqueeze(1)).squeeze(1)
-    next_best_action = torch.max(next_q_values, 1)[1]
-    next_q_value = next_q_state_values.gather(1, next_best_action.unsqueeze(1)).squeeze(1)
     # If we don't squeeze
+    q_value = q_values.gather(1, action.unsqueeze(1)).squeeze(1)
+    next_q_value = next_q_values.max(1)[0]
     expected_q_value = reward + gamma * next_q_value * (1 - done)
     loss = (q_value - expected_q_value).pow(2).mean()
 
