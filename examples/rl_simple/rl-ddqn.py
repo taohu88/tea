@@ -31,7 +31,6 @@ def train_batch(current_model, target_model, batches, optimizer, gamma=0.99, dev
     next_best_action = torch.max(next_q_values, 1)[1]
     next_q_value = next_q_state_values.gather(1, next_best_action.unsqueeze(1)).squeeze(1)
     expected_q_value = reward + gamma * next_q_value * (1 - done)
-    # print('BBB', expected_q_value.shape, done.shape, next_q_value.shape)
     loss = (q_value - expected_q_value).pow(2).mean()
 
     optimizer.zero_grad()
