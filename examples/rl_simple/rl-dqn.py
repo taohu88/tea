@@ -4,8 +4,8 @@ import fire
 import torch
 import torch.optim as optim
 import numpy as np
-from tea.rl.replayer_buffer import ReplayBuffer
-from tea.rl.models import CartPoloDQN
+from rl.replayer_buffer import ReplayBuffer
+from rl.models import CartPoloDQN
 
 
 def train_batch(model, batches, optimizer, gamma=0.99, device=None):

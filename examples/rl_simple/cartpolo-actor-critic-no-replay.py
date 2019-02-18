@@ -23,7 +23,7 @@ class OnPolicyLearner():
 
 
     @staticmethod
-    def select_action(policy, state):
+    def select_action(policy, state, device):
         if isinstance(state, np.ndarray):
             if len(state.shape) < 2:
                 # make it look like bactch
@@ -35,6 +35,7 @@ class OnPolicyLearner():
         else:
             raise Exception(f"Unexcepted type of {type(state)}")
 
+        state = state.to(device)
         output = policy(state)
         if islist(output):
             probs = output[0]
@@ -45,17 +46,17 @@ class OnPolicyLearner():
         return action.item(), m.log_prob(action), output[1:]
 
     @staticmethod
-    def backward_one_episode(policy_outs, raw_rewards, optimizer, gamma, eps):
+    def backward_one_episode(policy_outs, raw_rewards, optimizer, gamma, eps, device):
         policy_losses = []
         value_losses = []
 
-        rewards = torch.tensor(discouont_rewards(raw_rewards, gamma))
+        rewards = torch.tensor(discouont_rewards(raw_rewards, gamma)).to(device)
         rewards = (rewards - rewards.mean()) / (rewards.std() + eps)
         for (log_prob, value), r in zip(policy_outs, rewards):
             if len(value) > 0:
                 value = value[0]
                 reward = r - value.item()
-                value_losses.append(F.smooth_l1_loss(value, torch.tensor([r])))
+                value_losses.append(F.smooth_l1_loss(value, torch.tensor([r]).to(device)))
             policy_losses.append(-log_prob * reward)
         optimizer.zero_grad()
         if value_losses:
@@ -66,13 +67,13 @@ class OnPolicyLearner():
         optimizer.step()
 
     # This is like stream online corresponding batch in other use cases
-    def forwad_one_episode(self, policy, max_run_per_episode):
+    def forwad_one_episode(self, policy, max_run_per_episode, device):
         state = self.env.reset()
         rewards = []
         policy_outs = []
         # run one episode
         for run_len in range(max_run_per_episode):
-            action, log_prob, state_value = self.select_action(policy, state)
+            action, log_prob, state_value = self.select_action(policy, state, device)
             state, reward, done, _ = self.env.step(action)
             # if self.render:
             #     self.env.render()
@@ -93,10 +94,10 @@ class OnPolicyLearner():
 
         running_reward = reward_threshold // 20
         for i_episode in range(max_episodes):
-            actions, rewards, run_len = self.forwad_one_episode(policy, max_run_per_episode)
+            actions, rewards, run_len = self.forwad_one_episode(policy, max_run_per_episode, device)
             # train after one episode
             running_reward = running_reward * 0.99 + run_len * 0.01
-            self.backward_one_episode(actions, rewards, self.optimizer, gamma, eps)
+            self.backward_one_episode(actions, rewards, self.optimizer, gamma, eps, device)
 
             if i_episode % log_freq == 0:
                 print('Episode {}\tLast length: {:4d}\tAverage length: {:.2f}'.format(
